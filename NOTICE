@@ -1,0 +1,31 @@
+Konjac Translation / こんにゃく翻訳
+Copyright 2026 がっちむち♂ (gatchimuchio)
+
+PROJECT ATTRIBUTION AND THIRD-PARTY NOTICE
+
+Original software is licensed Apache-2.0 and original explanatory
+documentation CC-BY-4.0 as assigned in LICENSE. See LICENSE-APACHE-2.0
+and LICENSE-CC-BY-4.0.
+
+Related independent project:
+- MINIDORA-BETA, https://github.com/gatchimuchio/MINIDORA-BETA
+  Selected future engine dependency; not vendored in this repository.
+  It has its own license scope, notices, dependencies and release boundaries.
+
+Sources analyzed as external implementation references (not copied/included):
+- RTranslator, https://github.com/niedev/RTranslator
+  Apache License 2.0; copyright and NOTICE as stated in its original repository.
+- Haas-ASR, https://github.com/third-intelligence/Haas-ASR
+  Apache License 2.0; model weights / datasets / components require individual review.
+- speech.cpp, https://github.com/nyosegawa/speech.cpp
+  MIT License; downstream model assets have their own terms.
+
+NO THIRD-PARTY SOFTWARE, MODEL WEIGHTS OR DATASETS WERE IMPORTED BY
+THE REPOSITORY INITIALIZATION. These listings document inspiration
+and attribution, not permission to relicense or claim ownership.
+
+When third-party files or assets are later included, add their exact
+source commits, file paths, copyright, licenses, original notices,
+modifications, model/data terms, and redistribution obligations here
+or in an appropriately linked NOTICE manifest before publication.
+

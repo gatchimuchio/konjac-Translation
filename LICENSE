@@ -1,0 +1,30 @@
+# Konjac Translation — License Scope
+
+Copyright 2026 がっちむち♂ (gatchimuchio).
+
+Licenses are assigned **by type of artifact**, consistent with the author's MINIDORA-BETA and BLUE-TANUKI projects. They are not two interchangeable options for every file.
+
+## Software — Apache License 2.0
+
+Applies to original executable and software-related material: source code, runtime, libraries, tools, scripts, tests, API/SDK implementations, build files, CI/configuration, and packaging.
+
+SPDX: `Apache-2.0`. See [LICENSE-APACHE-2.0](LICENSE-APACHE-2.0).
+
+## Explanatory documentation — Creative Commons Attribution 4.0
+
+Applies to original explanatory work: README files, software and architecture specifications, designs, product requirement narratives, diagrams, audit/decision reports and other non-executable descriptive documents.
+
+SPDX: `CC-BY-4.0`. See [LICENSE-CC-BY-4.0](LICENSE-CC-BY-4.0) and the official legal terms linked there.
+
+## Priority and third-party material
+
+Specific file-level or directory-level copyright/license notices take precedence for those files. Third-party source code, model weights, datasets, documents, audio samples, images, fonts and other materials remain subject to their own terms. A dependency's license **does not automatically license** its models or content.
+
+The reference implementations listed in [NOTICE](NOTICE) are not incorporated into this repository merely because they are linked. Before source or asset import, record exact provenance, notices, modifications and redistribution rights.
+
+---
+
+# 日本語要旨
+
+本リポジトリの**独自ソフトウェア**（実装・テスト・ビルド等）は Apache-2.0、**独自の説明文書**（README・仕様・設計・監査等）は CC BY 4.0 とする。すべてのファイルを任意の片方で扱えるデュアルライセンスではない。個別ライセンス・第三者由来物の権利を優先する。正式条件は各ライセンス本文を参照する。
+

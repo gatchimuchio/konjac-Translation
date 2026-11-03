@@ -1,0 +1,41 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Generated logs and private recordings
+*.log
+logs/
+recordings/
+transcripts-private/
+local-data/
+tmp/
+temp/
+
+# Common build/cache products (not source)
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+node_modules/
+dist/
+build/
+coverage/
+*.egg-info/
+target/
+.dart_tool/
+.flutter-plugins*
+*.iml
+
+# IDE and OS noise
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
