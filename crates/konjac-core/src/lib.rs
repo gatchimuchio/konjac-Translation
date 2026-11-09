@@ -1049,7 +1049,20 @@ impl TranslationEvent {
     }
 }
 
-/// Validates one ordered event page before merging it into a session history.
+fn is_translation_terminal(event_type: &TranslationEventType) -> bool {
+    matches!(
+        event_type,
+        TranslationEventType::Completed
+            | TranslationEventType::Unsupported
+            | TranslationEventType::Suspended
+            | TranslationEventType::Failed
+            | TranslationEventType::Cancelled
+            | TranslationEventType::TimedOut
+    )
+}
+
+/// Validates one page's local record ordering before merging it into a session
+/// history. Lifecycle validation across pages requires `TranslationEventStream`.
 /// Persistence must still allocate sequence numbers and append atomically.
 pub fn validate_event_batch(events: &[TranslationEvent]) -> Result<(), ContractError> {
     let mut previous: Option<&TranslationEvent> = None;
@@ -1067,20 +1080,85 @@ pub fn validate_event_batch(events: &[TranslationEvent]) -> Result<(), ContractE
         if terminal_seen && !is_delivery {
             return Err(ContractError::EventAfterTerminal);
         }
-        if matches!(
-            event.event_type,
-            TranslationEventType::Completed
-                | TranslationEventType::Unsupported
-                | TranslationEventType::Suspended
-                | TranslationEventType::Failed
-                | TranslationEventType::Cancelled
-                | TranslationEventType::TimedOut
-        ) {
+        if is_translation_terminal(&event.event_type) {
             terminal_seen = true;
         }
         previous = Some(event);
     }
     Ok(())
+}
+
+/// Tracks translation lifecycle across ordered pages for one request. This
+/// cursor is process-local; durable checkpointing belongs to a storage adapter.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TranslationEventStream {
+    request_id: Uuid,
+    last_sequence: u64,
+    last_occurred_at: Option<DateTime<Utc>>,
+    terminal_seen: bool,
+}
+
+impl TranslationEventStream {
+    pub fn new(request_id: Uuid) -> Self {
+        Self {
+            request_id,
+            last_sequence: 0,
+            last_occurred_at: None,
+            terminal_seen: false,
+        }
+    }
+
+    pub fn last_sequence(&self) -> u64 {
+        self.last_sequence
+    }
+
+    pub fn terminal_seen(&self) -> bool {
+        self.terminal_seen
+    }
+
+    /// Validates and applies a complete next page. The cursor changes only if
+    /// every event passes, so a rejected page can be corrected and retried.
+    pub fn apply_page(&mut self, events: &[TranslationEvent]) -> Result<(), ContractError> {
+        let mut candidate = self.clone();
+        for event in events {
+            event.validate()?;
+            let expected_sequence = candidate
+                .last_sequence
+                .checked_add(1)
+                .ok_or(ContractError::UnorderedEvents)?;
+            if event.request_id != candidate.request_id
+                || event.sequence != expected_sequence
+                || candidate
+                    .last_occurred_at
+                    .is_some_and(|previous| event.occurred_at < previous)
+            {
+                return Err(ContractError::UnorderedEvents);
+            }
+
+            if (candidate.last_sequence == 0 && event.event_type != TranslationEventType::Accepted)
+                || (candidate.last_sequence > 0
+                    && event.event_type == TranslationEventType::Accepted)
+            {
+                return Err(ContractError::AcceptedEventPosition);
+            }
+            if candidate.terminal_seen && event.event_type != TranslationEventType::DeliveryUpdated
+            {
+                return Err(ContractError::EventAfterTerminal);
+            }
+            if !candidate.terminal_seen && event.event_type == TranslationEventType::DeliveryUpdated
+            {
+                return Err(ContractError::EventBeforeTerminal);
+            }
+
+            if is_translation_terminal(&event.event_type) {
+                candidate.terminal_seen = true;
+            }
+            candidate.last_sequence = event.sequence;
+            candidate.last_occurred_at = Some(event.occurred_at);
+        }
+        *self = candidate;
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -1213,6 +1291,10 @@ pub enum ContractError {
     UnorderedEvents,
     #[error("translation event follows a terminal event")]
     EventAfterTerminal,
+    #[error("delivery event precedes translation termination")]
+    EventBeforeTerminal,
+    #[error("accepted event must be the first and only accepted event")]
+    AcceptedEventPosition,
     #[error("session fields are incomplete or inconsistent")]
     InvalidSession,
     #[error("source span fields are incomplete or inconsistent")]
@@ -1463,6 +1545,107 @@ mod tests {
             validate_event_batch(&invalid),
             Err(ContractError::EventAfterTerminal)
         );
+    }
+
+    #[test]
+    fn event_stream_preserves_terminal_state_across_pages() {
+        let request_id = Uuid::from_u128(70);
+        let make_event = |sequence, event_type, result_id, delivery_artifact_id| TranslationEvent {
+            contract_version: LOGICAL_CONTRACT_VERSION.into(),
+            record_id: Uuid::from_u128(1_000 + sequence as u128),
+            created_at: at(1),
+            request_id,
+            sequence,
+            event_type,
+            variant_id: None,
+            result_id,
+            delivery_artifact_id,
+            occurred_at: at(sequence as u32),
+        };
+        let mut stream = TranslationEventStream::new(request_id);
+        assert_eq!(
+            stream.apply_page(&[
+                make_event(1, TranslationEventType::Accepted, None, None),
+                make_event(2, TranslationEventType::Processing, None, None),
+            ]),
+            Ok(())
+        );
+
+        assert_eq!(
+            stream.apply_page(&[make_event(
+                3,
+                TranslationEventType::DeliveryUpdated,
+                None,
+                Some(Uuid::from_u128(80)),
+            )]),
+            Err(ContractError::EventBeforeTerminal)
+        );
+        assert_eq!(stream.last_sequence(), 2);
+
+        assert_eq!(
+            stream.apply_page(&[make_event(
+                3,
+                TranslationEventType::Completed,
+                Some(Uuid::from_u128(81)),
+                None,
+            )]),
+            Ok(())
+        );
+        assert!(stream.terminal_seen());
+        assert_eq!(
+            stream.apply_page(&[make_event(
+                4,
+                TranslationEventType::DeliveryUpdated,
+                None,
+                Some(Uuid::from_u128(80)),
+            )]),
+            Ok(())
+        );
+        assert_eq!(
+            stream.apply_page(&[make_event(
+                5,
+                TranslationEventType::Failed,
+                Some(Uuid::from_u128(82)),
+                None,
+            )]),
+            Err(ContractError::EventAfterTerminal)
+        );
+        assert_eq!(stream.last_sequence(), 4);
+    }
+
+    #[test]
+    fn event_stream_rejects_gaps_and_duplicate_acceptance_atomically() {
+        let request_id = Uuid::from_u128(90);
+        let make_event = |sequence, event_type| TranslationEvent {
+            contract_version: LOGICAL_CONTRACT_VERSION.into(),
+            record_id: Uuid::from_u128(2_000 + sequence as u128),
+            created_at: at(1),
+            request_id,
+            sequence,
+            event_type,
+            variant_id: None,
+            result_id: None,
+            delivery_artifact_id: None,
+            occurred_at: at(sequence as u32),
+        };
+        let mut stream = TranslationEventStream::new(request_id);
+        assert_eq!(
+            stream.apply_page(&[make_event(1, TranslationEventType::Accepted)]),
+            Ok(())
+        );
+        assert_eq!(
+            stream.apply_page(&[
+                make_event(2, TranslationEventType::Processing),
+                make_event(4, TranslationEventType::Processing),
+            ]),
+            Err(ContractError::UnorderedEvents)
+        );
+        assert_eq!(stream.last_sequence(), 1);
+        assert_eq!(
+            stream.apply_page(&[make_event(2, TranslationEventType::Accepted)]),
+            Err(ContractError::AcceptedEventPosition)
+        );
+        assert_eq!(stream.last_sequence(), 1);
     }
 
     #[test]
