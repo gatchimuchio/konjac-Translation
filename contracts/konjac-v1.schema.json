@@ -315,10 +315,10 @@
             "request_id": {"$ref": "#/$defs/id"},
             "source_span_id": {"$ref": "#/$defs/id"},
             "target_language": {"$ref": "#/$defs/languageTag"},
-            "revision": {"type": "integer", "minimum": 1},
+            "revision": {"type": "integer", "minimum": 1, "maximum": 18446744073709551615},
             "status": {"enum": ["PROVISIONAL", "FINAL", "UNSUPPORTED", "SUSPEND", "FAILED", "CANCELLED", "TIMED_OUT"]},
             "text": {"type": ["string", "null"], "minLength": 1},
-            "engine_execution_id": {"$ref": "#/$defs/id"},
+            "engine_execution_id": {"type": ["string", "null"], "format": "uuid"},
             "provenance_ref": {"anyOf": [{"$ref": "#/$defs/reference"}, {"type": "null"}]},
             "speaker_id": {"type": ["string", "null"], "format": "uuid"},
             "position": {"anyOf": [{"$ref": "#/$defs/position"}, {"type": "null"}]},
@@ -326,7 +326,8 @@
           },
           "required": ["request_id", "source_span_id", "target_language", "revision", "status", "text", "produced_at"]
         },
-        {"if": {"properties": {"status": {"enum": ["PROVISIONAL", "FINAL"]}}, "required": ["status"]}, "then": {"required": ["engine_execution_id"], "properties": {"text": {"type": "string", "minLength": 1}}}},
+        {"if": {"properties": {"status": {"const": "FINAL"}}, "required": ["status"]}, "then": {"required": ["engine_execution_id"], "properties": {"engine_execution_id": {"type": "string", "format": "uuid"}, "text": {"type": "string", "minLength": 1}}}},
+        {"if": {"properties": {"status": {"const": "PROVISIONAL"}, "text": {"type": "string"}}, "required": ["status", "text"]}, "then": {"required": ["engine_execution_id"], "properties": {"engine_execution_id": {"type": "string", "format": "uuid"}}}},
         {"if": {"properties": {"status": {"enum": ["UNSUPPORTED", "SUSPEND", "FAILED", "CANCELLED", "TIMED_OUT"]}}, "required": ["status"]}, "then": {"properties": {"text": {"const": null}}}}
       ],
       "unevaluatedProperties": false

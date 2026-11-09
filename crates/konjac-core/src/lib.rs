@@ -1896,6 +1896,42 @@ mod tests {
     }
 
     #[test]
+    fn provisional_translation_can_precede_text_and_engine_evidence() {
+        let mut variant = TranslationVariant {
+            contract_version: LOGICAL_CONTRACT_VERSION.into(),
+            record_id: Uuid::from_u128(60),
+            created_at: at(1),
+            request_id: Uuid::from_u128(5),
+            source_span_id: Uuid::from_u128(3),
+            target_language: "en".parse().unwrap(),
+            revision: 1,
+            status: VariantStatus::Provisional,
+            text: None,
+            engine_execution_id: None,
+            provenance_ref: None,
+            speaker_id: None,
+            position: None,
+            produced_at: at(1),
+        };
+        assert_eq!(variant.validate(), Ok(()));
+        let wire = serde_json::to_value(&variant).unwrap();
+        assert!(wire["text"].is_null());
+        assert!(wire["engine_execution_id"].is_null());
+
+        variant.text = Some("interim text".into());
+        assert_eq!(variant.validate(), Err(ContractError::InvalidVariant));
+        variant.engine_execution_id = Some(Uuid::from_u128(61));
+        assert_eq!(variant.validate(), Ok(()));
+
+        variant.status = VariantStatus::Final;
+        variant.engine_execution_id = None;
+        assert_eq!(
+            variant.validate(),
+            Err(ContractError::FinalVariantNeedsEvidence)
+        );
+    }
+
+    #[test]
     fn final_translation_must_point_to_the_successful_engine_execution() {
         let variant = TranslationVariant {
             contract_version: LOGICAL_CONTRACT_VERSION.into(),

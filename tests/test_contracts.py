@@ -33,7 +33,7 @@ SAMPLES = [
     record("SourceSpan", "10000000-0000-4000-8000-000000000005", asset_id="10000000-0000-4000-8000-000000000002", session_id="10000000-0000-4000-8000-000000000003", revision=1, payload={"kind": "text", "text": "こんにちは"}, source_language="ja", observation_origin="typed"),
     record("TranslationRequest", "10000000-0000-4000-8000-000000000006", session_id="10000000-0000-4000-8000-000000000003", session_revision=1, revision=1, source_span_ids=["10000000-0000-4000-8000-000000000005"], input_revision=1, target_languages=["en"], context_refs=[], terminology_refs=[], requested_outputs=["text"], execution_mode="batch", processing_location="local_only", idempotency_key="konjac-request-0001", attempt=1),
     record("EngineExecution", "10000000-0000-4000-8000-000000000007", request_id="10000000-0000-4000-8000-000000000006", engine_name="MINIDORA-BETA", engine_version="0.6.0b1", engine_revision="fe5822de63644bdaea9208a98046f71684dffae2", public_entry_point="minidora.engine_beta.ミニドラβ実行機", capability={"capability_id": "translation.text", "state": "UNSUPPORTED", "engine_version": "0.6.0b1", "engine_revision": "fe5822de63644bdaea9208a98046f71684dffae2", "reason_code": "NO_PUBLIC_TRANSLATION_OPERATION", "observed_at": STAMP}, input_fingerprint="0" * 64, response_fingerprint=None, outcome="UNSUPPORTED", started_at=STAMP, finished_at=STAMP, diagnostic_code="NO_PUBLIC_TRANSLATION_OPERATION", trace_ref=None),
-    record("TranslationVariant", "10000000-0000-4000-8000-000000000008", request_id="10000000-0000-4000-8000-000000000006", source_span_id="10000000-0000-4000-8000-000000000005", target_language="en", revision=1, status="UNSUPPORTED", text=None, produced_at=STAMP),
+    record("TranslationVariant", "10000000-0000-4000-8000-000000000008", request_id="10000000-0000-4000-8000-000000000006", source_span_id="10000000-0000-4000-8000-000000000005", target_language="en", revision=1, status="UNSUPPORTED", text=None, engine_execution_id=None, provenance_ref=None, speaker_id=None, position=None, produced_at=STAMP),
     record("TranslationResult", "10000000-0000-4000-8000-000000000009", request_id="10000000-0000-4000-8000-000000000006", request_revision=1, status="UNSUPPORTED", variant_ids=[], engine_execution_ids=["10000000-0000-4000-8000-000000000007"], failure_code="CAPABILITY_NOT_EXPOSED", completed_at=STAMP),
     record("DeliveryArtifact", "10000000-0000-4000-8000-000000000010", request_id="10000000-0000-4000-8000-000000000006", variant_id="10000000-0000-4000-8000-000000000008", format="text", destination="local-view", payload_ref={"kind": "local", "key": "result/10000000-0000-4000-8000-000000000009"}, status="READY"),
     record("TranslationEvent", "10000000-0000-4000-8000-000000000011", request_id="10000000-0000-4000-8000-000000000006", sequence=1, event_type="unsupported", result_id="10000000-0000-4000-8000-000000000009", occurred_at=STAMP),
@@ -176,6 +176,23 @@ class ContractSchemaTests(unittest.TestCase):
         execution = deepcopy(SAMPLES[5])
         execution["input_fingerprint"] = "invalid"
         self.assertFalse(VALIDATOR.is_valid(execution))
+
+    def test_translation_variant_distinguishes_provisional_and_final_evidence(self) -> None:
+        variant = deepcopy(SAMPLES[6])
+        VALIDATOR.validate(variant)
+
+        variant["status"] = "PROVISIONAL"
+        VALIDATOR.validate(variant)
+        variant["text"] = "interim text"
+        self.assertFalse(VALIDATOR.is_valid(variant))
+        variant["engine_execution_id"] = "10000000-0000-4000-8000-000000000007"
+        VALIDATOR.validate(variant)
+
+        variant["status"] = "FINAL"
+        variant["text"] = "final text"
+        VALIDATOR.validate(variant)
+        variant["engine_execution_id"] = None
+        self.assertFalse(VALIDATOR.is_valid(variant))
 
     def test_language_tags_follow_bcp47_subtag_order(self) -> None:
         session = deepcopy(SAMPLES[2])
