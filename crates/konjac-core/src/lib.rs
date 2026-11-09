@@ -14,6 +14,7 @@ use thiserror::Error;
 use uuid::Uuid;
 
 pub mod consent;
+pub mod delivery;
 pub mod engine;
 
 pub const LOGICAL_CONTRACT_VERSION: &str = "1.0.0";
