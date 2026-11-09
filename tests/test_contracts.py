@@ -54,6 +54,24 @@ class ContractSchemaTests(unittest.TestCase):
             with self.subTest(record_type=sample["record_type"]):
                 VALIDATOR.validate(sample)
 
+    def test_language_tags_follow_bcp47_subtag_order(self) -> None:
+        session = deepcopy(SAMPLES[2])
+        for tag in [
+            "zh-Hant-TW",
+            "zh-cmn-Hans-CN",
+            "de-CH-1901",
+            "en-u-ca-gregory",
+            "x-private",
+            "i-klingon",
+            "en-GB-oed",
+        ]:
+            session["target_languages"] = [tag]
+            self.assertTrue(VALIDATOR.is_valid(session), tag)
+
+        for tag in ["en-a", "en-x", "en-US-Latn", "a-bbb", "en--US", "x"]:
+            session["target_languages"] = [tag]
+            self.assertFalse(VALIDATOR.is_valid(session), tag)
+
     def test_remote_processing_requires_explicit_consent_reference(self) -> None:
         request = deepcopy(SAMPLES[4])
         request["processing_location"] = "remote_with_consent"

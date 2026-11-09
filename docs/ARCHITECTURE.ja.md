@@ -125,7 +125,7 @@ flowchart LR
 
 ## 8. 現在の共通コア実装範囲
 
-`crates/konjac-core`には7中核record、ConsentGrant/ConsentRevocation、TranslationResult/TranslationEventの型、基本不変条件、明示的同意評価（重複grant IDは拒否）、アクティブsession/request/input版とSourceAsset/Spanの参照検査、訳先出力の全数参照検査を実装した。`AuthorizationContext`を使う経路は、認証済み主体のgrantがSourceAssetごとのCaptureとProcessRemote/ProcessLocalを許可し、期限内で撤回されていないことを照会前に検査する。EnginePortの能力許可は原言語・訳先・文脈要否・batch/streamingと版付き証拠を束縛する。`execute_guarded_at`は有効な期限・取消時刻を比較し、能力照会前に先に成立した終端理由で停止する。認証サービスと永続grant台帳は未実装。Rust内の`contract_version`は論理契約版であり、JSON Schemaの`schema_version`と同じ物として扱わない。
+`crates/konjac-core`には7中核record、ConsentGrant/ConsentRevocation、TranslationResult/TranslationEventの型、BCP 47 well-formedタグ構文と正規化、基本不変条件、明示的同意評価（重複grant IDは拒否）、アクティブsession/request/input版とSourceAsset/Spanの参照検査、訳先出力の全数参照検査を実装した。`AuthorizationContext`を使う経路は、認証済み主体のgrantがSourceAssetごとのCaptureとProcessRemote/ProcessLocalを許可し、期限内で撤回されていないことを照会前に検査する。EnginePortの能力許可は原言語・訳先・文脈要否・batch/streamingと版付き証拠を束縛する。`execute_guarded_at`は有効な期限・取消時刻を比較し、能力照会前に先に成立した終端理由で停止する。認証サービスと永続grant台帳は未実装。Rust内の`contract_version`は論理契約版であり、JSON Schemaの`schema_version`と同じ物として扱わない。
 
 このcrateには翻訳モデル・意味判断ロジック・MINIDORA呼出し実装はない。許可評価は渡された同意記録に対する純関数であり、永続台帳、OS権限、認証、実際のデータ消去を代替しない。期限・取消検査はエンジン呼出し前に限られ、実行中の取消伝播と停止確認を実装しない。event batch検査は読み込んだpageの整合を確認するが、DBのsequence採番/追記を保証しない。Rust単体テストは構造/境界の一部を確認するだけで、W01/W02/W03全体の実装、結線、QCをPASSにしない。論理型からJSON/OpenAPIへの完全射影も未施工。
 

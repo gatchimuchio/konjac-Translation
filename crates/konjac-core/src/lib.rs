@@ -29,38 +29,185 @@ impl LanguageTag {
     }
 }
 
+const GRANDFATHERED_LANGUAGE_TAGS: &[&str] = &[
+    "art-lojban",
+    "cel-gaulish",
+    "en-GB-oed",
+    "i-ami",
+    "i-bnn",
+    "i-default",
+    "i-enochian",
+    "i-hak",
+    "i-klingon",
+    "i-lux",
+    "i-mingo",
+    "i-navajo",
+    "i-pwn",
+    "i-tao",
+    "i-tay",
+    "i-tsu",
+    "no-bok",
+    "no-nyn",
+    "sgn-BE-FR",
+    "sgn-BE-NL",
+    "sgn-CH-DE",
+    "zh-guoyu",
+    "zh-hakka",
+    "zh-min",
+    "zh-min-nan",
+    "zh-xiang",
+];
+
+fn is_ascii_alpha(value: &str) -> bool {
+    !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_alphabetic())
+}
+
+fn is_ascii_alphanumeric(value: &str) -> bool {
+    !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_alphanumeric())
+}
+
+fn is_variant_subtag(value: &str) -> bool {
+    (5..=8).contains(&value.len()) && is_ascii_alphanumeric(value)
+        || value.len() == 4 && value.as_bytes()[0].is_ascii_digit() && is_ascii_alphanumeric(value)
+}
+
 impl FromStr for LanguageTag {
     type Err = ContractError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        let mut parts = value.split('-');
-        let language = parts.next().ok_or(ContractError::InvalidLanguageTag)?;
-        if !(2..=8).contains(&language.len()) || !language.bytes().all(|b| b.is_ascii_alphabetic())
-        {
+        if value.is_empty() || value.len() > 63 || !value.is_ascii() {
             return Err(ContractError::InvalidLanguageTag);
         }
 
-        let mut canonical = vec![language.to_ascii_lowercase()];
-        for part in parts {
-            if part.is_empty() || part.len() > 8 || !part.bytes().all(|b| b.is_ascii_alphanumeric())
+        if let Some(grandfathered) = GRANDFATHERED_LANGUAGE_TAGS
+            .iter()
+            .find(|tag| tag.eq_ignore_ascii_case(value))
+        {
+            return Ok(Self((*grandfathered).to_owned()));
+        }
+
+        let subtags: Vec<_> = value.split('-').collect();
+        if subtags.iter().any(|subtag| subtag.is_empty()) {
+            return Err(ContractError::InvalidLanguageTag);
+        }
+
+        if subtags[0].eq_ignore_ascii_case("x") {
+            if subtags.len() < 2
+                || subtags[1..]
+                    .iter()
+                    .any(|subtag| subtag.len() > 8 || !is_ascii_alphanumeric(subtag))
             {
                 return Err(ContractError::InvalidLanguageTag);
             }
-            let value = if part.len() == 4 && part.bytes().all(|b| b.is_ascii_alphabetic()) {
-                let mut chars = part.chars();
-                let first = chars
-                    .next()
-                    .ok_or(ContractError::InvalidLanguageTag)?
-                    .to_ascii_uppercase();
-                format!("{first}{}", chars.as_str().to_ascii_lowercase())
-            } else if (part.len() == 2 && part.bytes().all(|b| b.is_ascii_alphabetic()))
-                || (part.len() == 3 && part.bytes().all(|b| b.is_ascii_digit()))
+            return Ok(Self(
+                subtags
+                    .iter()
+                    .map(|subtag| subtag.to_ascii_lowercase())
+                    .collect::<Vec<_>>()
+                    .join("-"),
+            ));
+        }
+
+        let primary = subtags[0];
+        let primary_length = primary.len();
+        if !(2..=8).contains(&primary_length) || !is_ascii_alpha(primary) {
+            return Err(ContractError::InvalidLanguageTag);
+        }
+
+        let mut canonical = vec![primary.to_ascii_lowercase()];
+        let mut index = 1;
+        if primary_length <= 3 {
+            let mut extlang_count = 0;
+            while extlang_count < 3
+                && subtags
+                    .get(index)
+                    .is_some_and(|subtag| subtag.len() == 3 && is_ascii_alpha(subtag))
             {
-                part.to_ascii_uppercase()
-            } else {
-                part.to_ascii_lowercase()
-            };
-            canonical.push(value);
+                canonical.push(subtags[index].to_ascii_lowercase());
+                index += 1;
+                extlang_count += 1;
+            }
+        }
+
+        if subtags
+            .get(index)
+            .is_some_and(|subtag| subtag.len() == 4 && is_ascii_alpha(subtag))
+        {
+            let script = subtags[index].to_ascii_lowercase();
+            let mut chars = script.chars();
+            let first = chars
+                .next()
+                .ok_or(ContractError::InvalidLanguageTag)?
+                .to_ascii_uppercase();
+            canonical.push(format!("{first}{}", chars.as_str()));
+            index += 1;
+        }
+
+        if subtags.get(index).is_some_and(|subtag| {
+            (subtag.len() == 2 && is_ascii_alpha(subtag))
+                || (subtag.len() == 3 && subtag.bytes().all(|byte| byte.is_ascii_digit()))
+        }) {
+            canonical.push(subtags[index].to_ascii_uppercase());
+            index += 1;
+        }
+
+        let mut variants = std::collections::BTreeSet::new();
+        while subtags
+            .get(index)
+            .is_some_and(|subtag| is_variant_subtag(subtag))
+        {
+            let variant = subtags[index].to_ascii_lowercase();
+            if !variants.insert(variant.clone()) {
+                return Err(ContractError::InvalidLanguageTag);
+            }
+            canonical.push(variant);
+            index += 1;
+        }
+
+        let mut extensions = std::collections::BTreeSet::new();
+        while subtags.get(index).is_some_and(|subtag| {
+            subtag.len() == 1 && is_ascii_alphanumeric(subtag) && !subtag.eq_ignore_ascii_case("x")
+        }) {
+            let singleton = subtags[index].to_ascii_lowercase();
+            if !extensions.insert(singleton.clone()) {
+                return Err(ContractError::InvalidLanguageTag);
+            }
+            canonical.push(singleton);
+            index += 1;
+
+            let first_extension_value = index;
+            while subtags.get(index).is_some_and(|subtag| {
+                (2..=8).contains(&subtag.len()) && is_ascii_alphanumeric(subtag)
+            }) {
+                canonical.push(subtags[index].to_ascii_lowercase());
+                index += 1;
+            }
+            if index == first_extension_value {
+                return Err(ContractError::InvalidLanguageTag);
+            }
+        }
+
+        if subtags
+            .get(index)
+            .is_some_and(|subtag| subtag.eq_ignore_ascii_case("x"))
+        {
+            canonical.push("x".into());
+            index += 1;
+            let private_use_start = index;
+            while subtags
+                .get(index)
+                .is_some_and(|subtag| subtag.len() <= 8 && is_ascii_alphanumeric(subtag))
+            {
+                canonical.push(subtags[index].to_ascii_lowercase());
+                index += 1;
+            }
+            if index == private_use_start {
+                return Err(ContractError::InvalidLanguageTag);
+            }
+        }
+
+        if index != subtags.len() {
+            return Err(ContractError::InvalidLanguageTag);
         }
         Ok(Self(canonical.join("-")))
     }
@@ -1225,7 +1372,34 @@ mod tests {
             "zh-hant-tw".parse::<LanguageTag>().unwrap().as_str(),
             "zh-Hant-TW"
         );
-        assert!("not a tag".parse::<LanguageTag>().is_err());
+        for valid in [
+            "zh-cmn-Hans-CN",
+            "de-CH-1901",
+            "sl-rozaj-biske",
+            "en-u-ca-gregory",
+            "x-private",
+            "i-KLINGON",
+            "en-gb-OED",
+        ] {
+            assert!(valid.parse::<LanguageTag>().is_ok(), "{valid}");
+        }
+        assert_eq!(
+            "i-KLINGON".parse::<LanguageTag>().unwrap().as_str(),
+            "i-klingon"
+        );
+        for invalid in [
+            "not a tag",
+            "en--US",
+            "en-a",
+            "en-x",
+            "en-US-Latn",
+            "en-u-ca-u-nu",
+            "sl-rozaj-rozaj",
+            "x",
+            "a-bbb",
+        ] {
+            assert!(invalid.parse::<LanguageTag>().is_err(), "{invalid}");
+        }
         assert!(serde_json::from_str::<LanguageTag>("\"en--US\"").is_err());
     }
 
