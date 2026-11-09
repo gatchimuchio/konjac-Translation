@@ -14,7 +14,7 @@
 | G2 実装契約 | 論理モデル、型、状態、EnginePort、権限、保存、交換、構築/配布案を全W/U/E/Aへ接続 | NOT RUN | Rustで主要型、要求版・span・結果参照整合、言語ペア/文脈/モード別能力許可を実装。ConsentGrant/TranslationSession/TranslationRequestのnullable項目・整数幅・同意境界・参照重複条件は局所整合済み。永続化・全状態・全索引対応とJSON/OpenAPI全属性射影は未完了。 |
 | G3 全数BUILD | W01–W12の全媒体・全環境構成を実装し、ビルド可能な成果物を作る | NOT RUN | 現行JSON契約・Python診断QCは部分準備。製品ランタイム・OSアダプターは未施工。 |
 | G4 全線結線 | 全入力から能力境界、結果/停止、表示・保存・配送まで共通契約で結線 | NOT RUN | 実訳経路はMINIDORA公開能力未成立のためBLOCKED。外側構成も未結線。 |
-| G5 局所QC | 全構成の型、権限、失敗、版、永続化、再試行、競合を検査 | NOT RUN | Python 25件は契約射影・ConsentGrant/TranslationSession・TranslationRequest境界・BCP 47形式・nullable event参照・sequence境界/SourceAsset/SourceSpan/EngineExecution/Result/Variant/DeliveryArtifact要件・能力ゲート、Rust 39件は共通コア境界の限定検査であり、G5受入ではない。 |
+| G5 局所QC | 全構成の型、権限、失敗、版、永続化、再試行、競合を検査 | NOT RUN | Python 25件は契約射影・ConsentGrant/ConsentRevocation/TranslationSession・TranslationRequest境界・BCP 47形式・nullable event参照・sequence境界/SourceAsset/SourceSpan/EngineExecution/Result/Variant/DeliveryArtifact要件・能力ゲート、Rust 40件は共通コア境界の限定検査であり、G5受入ではない。 |
 | G6 全体QC | 全入力→中核→出力、A01–A07、U01–U12の横断経路・異常系を検査 | NOT RUN | 製品全線が未結線。 |
 | G7 環境別QA | E01–E06と該当ブラウザ/ABI/権限/配布条件を仮想・自動検証 | NOT RUN | E01 Windows、E02 Linux、E03 macOS、E04 Android、E05 iOS、E06 WebのQAは全てNOT RUN。実機未確認。 |
 | G8 Owner最終判定 | Ownerが施工証拠、実訳、品質、権利、残余リスクを独立検収 | NOT RUN | CodexはOwner受入・公開判断を代行しない。 |
@@ -66,7 +66,7 @@ G0–G2を閉じてから全体BUILDへ進む。W行ごとに完成判定を作�
 
 - 構造受入A01–A07、製品受入U01–U12の定義・段階状態は[受入規定](ACCEPTANCE.ja.md)に保持する。定義PASSは実装PASSではない。
 - 全72件のU×E適用行列は施工対象の索引であり、各セルの実装・結線・QC・QA・Owner受入は未実施。
-- 2026-11-09にPython 3.12の契約/OpenAPI/ConsentGrant・TranslationSession/TranslationRequest/BCP 47/TranslationEvent nullable参照・sequence/イベントwire参照/SourceAsset・SourceSpan・EngineExecution・TranslationResult・TranslationVariant・DeliveryArtifact射影/能力ゲート25件とRust 1.99.1の論理record/TranslationRequest/BCP 47/SourceAsset・SourceSpan・EngineExecution・TranslationResult・TranslationVariant・DeliveryArtifact境界/同意・権限/Variant・原文範囲・成功実行証拠に束縛した配送preflight/並行冪等claim/EnginePort/セッション・入力・期限・取消・結果/ページ間イベントcursor境界39件を現作業ツリーで実行し、双方PASS。Rust clippy（warningをerror化）とformat checkもPASS。これらはG5の全W局所QCではない。
+- 2026-11-09にPython 3.12の契約/OpenAPI/ConsentGrant・TranslationSession/TranslationRequest/BCP 47/TranslationEvent nullable参照・sequence/イベントwire参照/SourceAsset・SourceSpan・EngineExecution・TranslationResult・TranslationVariant・DeliveryArtifact射影/能力ゲート25件とRust 1.99.1の論理record/TranslationRequest/BCP 47/SourceAsset・SourceSpan・EngineExecution・TranslationResult・TranslationVariant・DeliveryArtifact境界/同意・権限/Variant・原文範囲・成功実行証拠に束縛した配送preflight/並行冪等claim/EnginePort/セッション・入力・期限・取消・結果/ページ間イベントcursor境界40件を現作業ツリーで実行し、双方PASS。Rust clippy（warningをerror化）とformat checkもPASS。これらはG5の全W局所QCではない。
 - 受入結果の証跡にはHEAD、依存版、OS/CPU/ABI、入力識別、手順、期待値、観測値、未確認範囲を記録する。
 - 全体実装完了、全体品質成立、MINIDORA実訳成立、製品受入、公開許可は異なる終端である。
 

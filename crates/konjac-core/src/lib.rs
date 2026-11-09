@@ -392,7 +392,8 @@ define_record!(ConsentGrant {
 impl ConsentGrant {
     pub fn validate(&self) -> Result<(), ContractError> {
         validate_base(&self.contract_version, &self.principal_id)?;
-        if self.subject_ids.is_empty()
+        if self.principal_id.chars().count() > 256
+            || self.subject_ids.is_empty()
             || self
                 .expires_at
                 .is_some_and(|expires| expires <= self.granted_at)
@@ -417,7 +418,10 @@ define_record!(ConsentRevocation {
 impl ConsentRevocation {
     pub fn validate(&self) -> Result<(), ContractError> {
         validate_base(&self.contract_version, &self.revoked_by)?;
-        if self.reason_code.is_empty() {
+        if self.revoked_by.chars().count() > 256
+            || self.reason_code.is_empty()
+            || self.reason_code.chars().count() > 128
+        {
             return Err(ContractError::InvalidRevocation);
         }
         Ok(())
@@ -1897,6 +1901,41 @@ mod tests {
             request(ProcessingLocation::RemoteWithConsent, None).validate(),
             Err(ContractError::MissingProcessingConsent)
         );
+    }
+
+    #[test]
+    fn consent_principal_and_revocation_fields_match_wire_limits() {
+        let mut grant = ConsentGrant {
+            contract_version: LOGICAL_CONTRACT_VERSION.into(),
+            record_id: Uuid::from_u128(91),
+            created_at: at(1),
+            principal_id: "owner".into(),
+            scope: ConsentScope::ProcessLocal,
+            subject_ids: vec![Uuid::from_u128(92)],
+            granted_at: at(1),
+            expires_at: None,
+            evidence_ref: None,
+        };
+        grant.principal_id = "語".repeat(256);
+        assert_eq!(grant.validate(), Ok(()));
+        grant.principal_id.push('語');
+        assert_eq!(grant.validate(), Err(ContractError::InvalidConsent));
+
+        let mut revocation = ConsentRevocation {
+            contract_version: LOGICAL_CONTRACT_VERSION.into(),
+            record_id: Uuid::from_u128(93),
+            created_at: at(1),
+            grant_id: Uuid::from_u128(92),
+            revoked_by: "語".repeat(256),
+            revoked_at: at(2),
+            reason_code: "語".repeat(128),
+        };
+        assert_eq!(revocation.validate(), Ok(()));
+        revocation.revoked_by.push('語');
+        assert_eq!(revocation.validate(), Err(ContractError::InvalidRevocation));
+        revocation.revoked_by = "owner".into();
+        revocation.reason_code.push('語');
+        assert_eq!(revocation.validate(), Err(ContractError::InvalidRevocation));
     }
 
     #[test]
