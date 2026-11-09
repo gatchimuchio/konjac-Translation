@@ -26,7 +26,7 @@ G0–G2を閉じてから全体BUILDへ進む。W行ごとに完成判定を作�
 | ID | 全体責務 | 現在の証拠・不足 | 状態 |
 |---|---|---|---|
 | W01 | 共通論理契約・型・版 | Rustで7中核record、ConsentGrant/Revocation、TranslationResult/Eventと主要不変条件・session/request/input revision、SourceAsset/Span/実行/結果参照、能力許可整合を実装。JSON/OpenAPI全属性射影と永続版整合は未完了。 | NOT RUN |
-| W02 | 権限・同意・信頼・原文保全・監査 | 同意型・有効期間/対象/用途/撤回を評価する純関数を実装し、grant ID重複は曖昧として拒否。OS権限、永続台帳、暗号化、削除、監査保管、復旧は未実装。 | NOT RUN |
+| W02 | 権限・同意・信頼・原文保全・監査 | ConsentRegistryで主体/範囲/対象/期限/撤回を評価し、grant ID重複は拒否。認証済みAuthorizationContextは媒体取得と処理grantを能力照会前に検査する。OS権限、永続台帳、一括撤回/競合、暗号化、削除、監査保管、復旧は未実装。 | NOT RUN |
 | W03 | MINIDORA公開境界ブリッジ | Python監査済み版プロファイルとRust EnginePort/能力ゲート契約あり。`execute_guarded`は期限・取消を確認し、全照会SUPPORTEDのときだけ単一Portを呼ぶ。許可は原言語・訳先・文脈要否・batch/streamingと厳密版証拠を束縛する。凍結0.6.0b1公開APIへの実行アダプター・実行中取消写像なし。翻訳はBLOCKED。 | BLOCKED |
 | W04 | テキスト・Web・文書取得 | 仕様と適用行列のみ。テキストUI、DOM、PDF/Office取得は未実装。 | NOT RUN |
 | W05 | 音声取得・ASR・話者/時刻 | Haas-ASR/speech.cppを権利・能力調査。統合なし、マイク/音源/ASR経路なし。 | NOT RUN |
@@ -66,7 +66,7 @@ G0–G2を閉じてから全体BUILDへ進む。W行ごとに完成判定を作�
 
 - 構造受入A01–A07、製品受入U01–U12の定義・段階状態は[受入規定](ACCEPTANCE.ja.md)に保持する。定義PASSは実装PASSではない。
 - 全72件のU×E適用行列は施工対象の索引であり、各セルの実装・結線・QC・QA・Owner受入は未実施。
-- 2026-11-09にPython 3.12の契約/OpenAPI/能力ゲート15件とRust 1.99.1の論理record/同意/EnginePort/セッション・入力・期限・取消・結果・イベント境界22件を現作業ツリーで実行し、双方PASS。Rust clippy（warningをerror化）とformat checkもPASS。これらはG5の全W局所QCではない。
+- 2026-11-09にPython 3.12の契約/OpenAPI/能力ゲート15件とRust 1.99.1の論理record/同意・権限/EnginePort/セッション・入力・期限・取消・結果・イベント境界24件を現作業ツリーで実行し、双方PASS。Rust clippy（warningをerror化）とformat checkもPASS。これらはG5の全W局所QCではない。
 - 受入結果の証跡にはHEAD、依存版、OS/CPU/ABI、入力識別、手順、期待値、観測値、未確認範囲を記録する。
 - 全体実装完了、全体品質成立、MINIDORA実訳成立、製品受入、公開許可は異なる終端である。
 

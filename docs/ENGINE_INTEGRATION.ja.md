@@ -33,7 +33,7 @@
 
 ## 3. 実装済みの共通ワイヤ契約
 
-論理契約の正本は[`contracts/LOGICAL_MODEL.ja.md`](../contracts/LOGICAL_MODEL.ja.md)、初期Rust型は[`crates/konjac-core`](../crates/konjac-core)に置く。[`contracts/konjac-v1.schema.json`](../contracts/konjac-v1.schema.json)はJSON交換射影で、Draft 2020-12を製品論理の正本にはしない。全項目の射影同値は未施工。Python能力ゲートは [`src/konjac_translation/engine_profile.py`](../src/konjac_translation/engine_profile.py) と監査済み版プロファイルを読み、未監査版を `UNVERIFIED` とする。Rust `EnginePort`は原言語・訳先・文脈要否・batch/streamingを指定する型付き照会と、厳密なエンジン版・commit・公開入口の証拠が一致したときだけ閉鎖型実行許可を作る。`execute_guarded`は入力・セッション検査、期限・取消の確認、全照会の事前判定を経てから単一エンジンを呼び、拒否・未知が一つでもあれば呼出しを止める。期限と取消が両方成立していれば、先に成立した状態を返す。返却後は許可集合、実行証拠、各訳先出力の対応を検査する。実行中の取消伝播と停止確認は未実装。これはMINIDORA実行アダプターではなく、翻訳実行も行わない。
+論理契約の正本は[`contracts/LOGICAL_MODEL.ja.md`](../contracts/LOGICAL_MODEL.ja.md)、初期Rust型は[`crates/konjac-core`](../crates/konjac-core)に置く。[`contracts/konjac-v1.schema.json`](../contracts/konjac-v1.schema.json)はJSON交換射影で、Draft 2020-12を製品論理の正本にはしない。全項目の射影同値は未施工。Python能力ゲートは [`src/konjac_translation/engine_profile.py`](../src/konjac_translation/engine_profile.py) と監査済み版プロファイルを読み、未監査版を `UNVERIFIED` とする。Rust `EnginePort`は原言語・訳先・文脈要否・batch/streamingを指定する型付き照会と、厳密なエンジン版・commit・公開入口の証拠が一致したときだけ閉鎖型実行許可を作る。`execute_guarded`は入力・セッション・期限・取消を検査し、認証済み主体を含むAuthorizationContextが渡された場合は媒体取得と処理の同意範囲・対象・期限・撤回を照会前に確認する。その後、全照会の事前判定を経てから単一エンジンを呼び、拒否・未知が一つでもあれば呼出しを止める。期限と取消が両方成立していれば、先に成立した状態を返す。返却後は許可集合、実行証拠、各訳先出力の対応を検査する。実行中の取消伝播と停止確認、認証サービスは未実装。これはMINIDORA実行アダプターではなく、翻訳実行も行わない。
 
 `schema_version` は現在 `1.0.0`。型と責務は次のとおり。
 
@@ -83,6 +83,6 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 ```
 
-Python 15件はJSON Schema/OpenAPI射影、要求版条件、未対応結果の無訳文条件と能力ゲートを検査する。Rust 22件は論理record、不正言語タグ、同意の主体/対象/用途/期限/撤回と重複grant ID拒否、厳密版能力ゲート、能力次元と許可集合の完全一致、アクティブsession/request/input各版、SourceAsset/Span／実行／全訳先結果参照、request時間窓、未対応・期限・取消時の実行前停止とevent順序を検査する。両者とも限定した契約QCであり、射影全同値、MINIDORA実行・実訳、実行中停止、サービス統合、対象端末QAの証拠ではない。
+Python 15件はJSON Schema/OpenAPI射影、要求版条件、未対応結果の無訳文条件と能力ゲートを検査する。Rust 24件は論理record、不正言語タグ、同意の主体/対象/用途/期限/撤回と重複grant ID拒否、媒体取得/local・remote処理権限の照合、厳密版能力ゲート、能力次元と許可集合の完全一致、アクティブsession/request/input各版、SourceAsset/Span／実行／全訳先結果参照、request時間窓、未対応・期限・取消時の実行前停止とevent順序を検査する。両者とも限定した契約QCであり、射影全同値、認証、永続同意、MINIDORA実行・実訳、実行中停止、サービス統合、対象端末QAの証拠ではない。
 
 実訳受入をPASSへ上げるには、新たに許可されたMINIDORA版の固定commit、公開API、対象言語ペア、文脈、停止／取消の実測、全件証跡が必要。別エンジンの出力や作用注入例で代替しない。

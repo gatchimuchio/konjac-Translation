@@ -557,10 +557,11 @@ impl TranslationRequest {
         {
             return Err(ContractError::SessionPolicyMismatch);
         }
-        if self.processing_location == ProcessingLocation::RemoteWithConsent
-            && self
-                .processing_consent_id
-                .is_none_or(|grant_id| !session.consent_grant_ids.contains(&grant_id))
+        if self
+            .processing_consent_id
+            .is_some_and(|grant_id| !session.consent_grant_ids.contains(&grant_id))
+            || (self.processing_location == ProcessingLocation::RemoteWithConsent
+                && self.processing_consent_id.is_none())
         {
             return Err(ContractError::MissingProcessingConsent);
         }

@@ -13,10 +13,12 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
+use crate::consent::ConsentRegistry;
 use crate::{
-    CapabilityEvidence, CapabilityState, EngineExecution, ExecutionMode, ExecutionOutcome,
-    LanguageTag, SourceAsset, SourceSpan, TranslationRequest, TranslationResult,
-    TranslationResultStatus, TranslationSession, TranslationVariant, VariantStatus,
+    CapabilityEvidence, CapabilityState, ConsentGrant, ConsentRevocation, ConsentScope,
+    EngineExecution, ExecutionMode, ExecutionOutcome, LanguageTag, SourceAsset, SourceSpan,
+    TranslationRequest, TranslationResult, TranslationResultStatus, TranslationSession,
+    TranslationVariant, VariantStatus,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -121,6 +123,14 @@ pub struct GateStop {
     pub reason_code: String,
 }
 
+/// Authorization facts supplied by a trusted caller after authenticating the
+/// acting principal. The principal must not come from an untrusted request body.
+pub struct AuthorizationContext<'a> {
+    pub principal_id: &'a str,
+    pub grants: &'a [ConsentGrant],
+    pub revocations: &'a [ConsentRevocation],
+}
+
 /// Returns a permit only when the evidence matches the selected build and
 /// explicitly says the requested capability is supported. Unknown or
 /// mismatched evidence suspends; known missing capability stays unsupported.
@@ -186,6 +196,49 @@ pub fn execute_guarded_at(
     source_spans: &[SourceSpan],
     now: DateTime<Utc>,
 ) -> Result<EngineRunResult, EnginePortError> {
+    execute_guarded_internal(
+        engine,
+        session,
+        request,
+        source_assets,
+        source_spans,
+        None,
+        now,
+    )
+}
+
+/// Runs the same guarded path with the caller's authenticated principal and
+/// consent records. Capture and remote-processing scopes are checked against
+/// every source asset before capability inspection.
+pub fn execute_guarded_authorized_at(
+    engine: &dyn EnginePort,
+    session: &TranslationSession,
+    request: &TranslationRequest,
+    source_assets: &[SourceAsset],
+    source_spans: &[SourceSpan],
+    authorization: &AuthorizationContext<'_>,
+    now: DateTime<Utc>,
+) -> Result<EngineRunResult, EnginePortError> {
+    execute_guarded_internal(
+        engine,
+        session,
+        request,
+        source_assets,
+        source_spans,
+        Some(authorization),
+        now,
+    )
+}
+
+fn execute_guarded_internal(
+    engine: &dyn EnginePort,
+    session: &TranslationSession,
+    request: &TranslationRequest,
+    source_assets: &[SourceAsset],
+    source_spans: &[SourceSpan],
+    authorization: Option<&AuthorizationContext<'_>>,
+    now: DateTime<Utc>,
+) -> Result<EngineRunResult, EnginePortError> {
     request
         .validate_against_session(session, source_assets, source_spans)
         .map_err(map_contract_error)?;
@@ -200,6 +253,17 @@ pub fn execute_guarded_at(
         (Some(_), None) => return Err(EnginePortError::RequestCancelledBeforeExecution),
         (None, Some(_)) => return Err(EnginePortError::RequestTimedOutBeforeExecution),
         (None, None) => {}
+    }
+
+    let requires_authorization = request.processing_location
+        == crate::ProcessingLocation::RemoteWithConsent
+        || request.processing_consent_id.is_some()
+        || source_assets
+            .iter()
+            .any(|asset| asset.capture_consent_id.is_some());
+    if requires_authorization {
+        let authorization = authorization.ok_or(EnginePortError::AuthorizationContextRequired)?;
+        validate_authorization(request, source_assets, authorization, now)?;
     }
 
     let context_required = !request.context_refs.is_empty() || !request.terminology_refs.is_empty();
@@ -233,6 +297,47 @@ pub fn execute_guarded_at(
     let run = engine.execute(request, source_spans, &permits)?;
     run.validate_for(session, request, source_assets, source_spans, &permits)?;
     Ok(run)
+}
+
+fn validate_authorization(
+    request: &TranslationRequest,
+    source_assets: &[SourceAsset],
+    authorization: &AuthorizationContext<'_>,
+    now: DateTime<Utc>,
+) -> Result<(), EnginePortError> {
+    let registry = ConsentRegistry::new(authorization.grants, authorization.revocations);
+    for asset in source_assets {
+        if let Some(grant_id) = asset.capture_consent_id
+            && !registry.authorizes(
+                grant_id,
+                authorization.principal_id,
+                ConsentScope::Capture,
+                asset.record_id,
+                now,
+            )
+        {
+            return Err(EnginePortError::AuthorizationDenied);
+        }
+    }
+
+    if let Some(grant_id) = request.processing_consent_id {
+        let scope = match request.processing_location {
+            crate::ProcessingLocation::LocalOnly => ConsentScope::ProcessLocal,
+            crate::ProcessingLocation::RemoteWithConsent => ConsentScope::ProcessRemote,
+        };
+        if source_assets.iter().any(|asset| {
+            !registry.authorizes(
+                grant_id,
+                authorization.principal_id,
+                scope.clone(),
+                asset.record_id,
+                now,
+            )
+        }) {
+            return Err(EnginePortError::AuthorizationDenied);
+        }
+    }
+    Ok(())
 }
 
 fn map_contract_error(error: crate::ContractError) -> EnginePortError {
@@ -489,6 +594,10 @@ pub enum EnginePortError {
     RequestCancelledBeforeExecution,
     #[error("request deadline elapsed before engine execution")]
     RequestTimedOutBeforeExecution,
+    #[error("authorization context is required for consent-bound processing")]
+    AuthorizationContextRequired,
+    #[error("consent does not authorize every requested operation and source asset")]
+    AuthorizationDenied,
     #[error("source span is invalid")]
     InvalidSourceSpan,
     #[error("source spans do not match the request revision or session")]
@@ -683,6 +792,155 @@ mod tests {
                 at(4)
             ),
             Err(EnginePortError::RequestTimedOutBeforeExecution)
+        );
+    }
+
+    #[test]
+    fn remote_processing_requires_active_capture_and_processing_grants_for_each_asset() {
+        let (mut session, mut request, mut asset, span, _, _) = contract_fixture();
+        let processing_grant_id = Uuid::from_u128(30);
+        let capture_grant_id = Uuid::from_u128(31);
+        let principal_id = "authenticated-owner";
+        session.processing_location = crate::ProcessingLocation::RemoteWithConsent;
+        session.consent_grant_ids = vec![processing_grant_id, capture_grant_id];
+        request.processing_location = crate::ProcessingLocation::RemoteWithConsent;
+        request.processing_consent_id = Some(processing_grant_id);
+        asset.origin = InputOrigin::Camera;
+        asset.media_kind = MediaKind::Image;
+        asset.media_type = "image/png".into();
+        asset.capture_consent_id = Some(capture_grant_id);
+
+        let make_grant = |record_id, scope| crate::ConsentGrant {
+            contract_version: crate::LOGICAL_CONTRACT_VERSION.into(),
+            record_id,
+            created_at: at(1),
+            principal_id: principal_id.into(),
+            scope,
+            subject_ids: vec![asset.record_id],
+            granted_at: at(1),
+            expires_at: Some(at(4)),
+            evidence_ref: None,
+        };
+        let grants = [
+            make_grant(processing_grant_id, ConsentScope::ProcessRemote),
+            make_grant(capture_grant_id, ConsentScope::Capture),
+        ];
+        let port = UnsupportedPort { identity: engine() };
+
+        assert_eq!(
+            execute_guarded_at(
+                &port,
+                &session,
+                &request,
+                std::slice::from_ref(&asset),
+                std::slice::from_ref(&span),
+                at(2)
+            ),
+            Err(EnginePortError::AuthorizationContextRequired)
+        );
+
+        let authorization = AuthorizationContext {
+            principal_id,
+            grants: &grants,
+            revocations: &[],
+        };
+        assert!(matches!(
+            execute_guarded_authorized_at(
+                &port,
+                &session,
+                &request,
+                std::slice::from_ref(&asset),
+                std::slice::from_ref(&span),
+                &authorization,
+                at(2)
+            ),
+            Err(EnginePortError::CapabilityStopped(_))
+        ));
+
+        let revocations = [crate::ConsentRevocation {
+            contract_version: crate::LOGICAL_CONTRACT_VERSION.into(),
+            record_id: Uuid::from_u128(32),
+            created_at: at(3),
+            grant_id: processing_grant_id,
+            revoked_by: principal_id.into(),
+            revoked_at: at(3),
+            reason_code: "USER_REVOKED".into(),
+        }];
+        let revoked_authorization = AuthorizationContext {
+            principal_id,
+            grants: &grants,
+            revocations: &revocations,
+        };
+        assert_eq!(
+            execute_guarded_authorized_at(
+                &port,
+                &session,
+                &request,
+                &[asset],
+                &[span],
+                &revoked_authorization,
+                at(3)
+            ),
+            Err(EnginePortError::AuthorizationDenied)
+        );
+    }
+
+    #[test]
+    fn local_processing_consent_must_use_the_local_scope() {
+        let (mut session, mut request, asset, span, _, _) = contract_fixture();
+        let grant_id = Uuid::from_u128(40);
+        let principal_id = "authenticated-owner";
+        session.consent_grant_ids = vec![grant_id];
+        request.processing_consent_id = Some(grant_id);
+        let grant = crate::ConsentGrant {
+            contract_version: crate::LOGICAL_CONTRACT_VERSION.into(),
+            record_id: grant_id,
+            created_at: at(1),
+            principal_id: principal_id.into(),
+            scope: ConsentScope::ProcessLocal,
+            subject_ids: vec![asset.record_id],
+            granted_at: at(1),
+            expires_at: Some(at(4)),
+            evidence_ref: None,
+        };
+        let authorization = AuthorizationContext {
+            principal_id,
+            grants: std::slice::from_ref(&grant),
+            revocations: &[],
+        };
+        let port = UnsupportedPort { identity: engine() };
+
+        assert!(matches!(
+            execute_guarded_authorized_at(
+                &port,
+                &session,
+                &request,
+                std::slice::from_ref(&asset),
+                std::slice::from_ref(&span),
+                &authorization,
+                at(2)
+            ),
+            Err(EnginePortError::CapabilityStopped(_))
+        ));
+
+        let mut wrong_scope_grant = grant;
+        wrong_scope_grant.scope = ConsentScope::ProcessRemote;
+        let wrong_scope_authorization = AuthorizationContext {
+            principal_id,
+            grants: std::slice::from_ref(&wrong_scope_grant),
+            revocations: &[],
+        };
+        assert_eq!(
+            execute_guarded_authorized_at(
+                &port,
+                &session,
+                &request,
+                &[asset],
+                &[span],
+                &wrong_scope_authorization,
+                at(2)
+            ),
+            Err(EnginePortError::AuthorizationDenied)
         );
     }
 
