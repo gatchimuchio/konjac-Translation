@@ -27,9 +27,9 @@ def record(record_type: str, record_id: str, **fields: object) -> dict[str, obje
 
 
 SAMPLES = [
-    record("ConsentGrant", "10000000-0000-4000-8000-000000000001", principal_id="owner", scope="process_local", subject_ids=[], granted_at=STAMP),
+    record("ConsentGrant", "10000000-0000-4000-8000-000000000001", principal_id="owner", scope="process_local", subject_ids=["10000000-0000-4000-8000-000000000002"], granted_at=STAMP, expires_at=None, evidence_ref=None),
     record("SourceAsset", "10000000-0000-4000-8000-000000000002", media_kind="text", origin="user_input", media_type="text/plain", retention="ephemeral", metadata={}),
-    record("TranslationSession", "10000000-0000-4000-8000-000000000003", revision=1, status="active", source_language="ja", target_languages=["en"], participants=[{"participant_id": "10000000-0000-4000-8000-000000000004", "role": "owner", "consent_grant_ids": []}], context_refs=[], terminology_refs=[], processing_location="local_only", consent_grant_ids=[], retention="ephemeral"),
+    record("TranslationSession", "10000000-0000-4000-8000-000000000003", revision=1, status="active", source_language=None, target_languages=["en"], participants=[{"participant_id": "10000000-0000-4000-8000-000000000004", "role": "owner", "preferred_language": None, "consent_grant_ids": []}], context_refs=[], terminology_refs=[], processing_location="local_only", consent_grant_ids=[], retention="ephemeral"),
     record("SourceSpan", "10000000-0000-4000-8000-000000000005", asset_id="10000000-0000-4000-8000-000000000002", session_id="10000000-0000-4000-8000-000000000003", revision=1, payload={"kind": "text", "text": "こんにちは"}, source_language="ja", observation_origin="typed"),
     record("TranslationRequest", "10000000-0000-4000-8000-000000000006", session_id="10000000-0000-4000-8000-000000000003", session_revision=1, revision=1, source_span_ids=["10000000-0000-4000-8000-000000000005"], input_revision=1, target_languages=["en"], context_refs=[], terminology_refs=[], requested_outputs=["text"], execution_mode="batch", processing_location="local_only", processing_consent_id=None, idempotency_key="konjac-request-0001", attempt=1, deadline=None, cancel_requested_at=None),
     record("EngineExecution", "10000000-0000-4000-8000-000000000007", request_id="10000000-0000-4000-8000-000000000006", engine_name="MINIDORA-BETA", engine_version="0.6.0b1", engine_revision="fe5822de63644bdaea9208a98046f71684dffae2", public_entry_point="minidora.engine_beta.ミニドラβ実行機", capability={"capability_id": "translation.text", "state": "UNSUPPORTED", "engine_version": "0.6.0b1", "engine_revision": "fe5822de63644bdaea9208a98046f71684dffae2", "reason_code": "NO_PUBLIC_TRANSLATION_OPERATION", "observed_at": STAMP}, input_fingerprint="0" * 64, response_fingerprint=None, outcome="UNSUPPORTED", started_at=STAMP, finished_at=STAMP, diagnostic_code="NO_PUBLIC_TRANSLATION_OPERATION", trace_ref=None),
@@ -257,6 +257,54 @@ class ContractSchemaTests(unittest.TestCase):
         self.assertFalse(VALIDATOR.is_valid(request))
         request["processing_consent_id"] = "10000000-0000-4000-8000-000000000001"
         self.assertTrue(VALIDATOR.is_valid(request))
+
+    def test_consent_grant_projection_matches_nullable_options_and_scope(self) -> None:
+        grant = deepcopy(SAMPLES[0])
+        VALIDATOR.validate(grant)
+
+        for field in ("expires_at", "evidence_ref"):
+            incomplete = deepcopy(grant)
+            incomplete.pop(field)
+            with self.subTest(missing=field):
+                self.assertFalse(VALIDATOR.is_valid(incomplete))
+
+        grant["subject_ids"] = []
+        self.assertFalse(VALIDATOR.is_valid(grant))
+        grant["subject_ids"] = ["10000000-0000-4000-8000-000000000002"] * 2
+        self.assertFalse(VALIDATOR.is_valid(grant))
+
+    def test_session_projection_matches_nullable_options_and_revision_bounds(self) -> None:
+        session = deepcopy(SAMPLES[2])
+        VALIDATOR.validate(session)
+
+        session["source_language"] = "und"
+        VALIDATOR.validate(session)
+        session["source_language"] = None
+        session["revision"] = 18446744073709551615
+        VALIDATOR.validate(session)
+        session["revision"] += 1
+        self.assertFalse(VALIDATOR.is_valid(session))
+
+        session = deepcopy(SAMPLES[2])
+        session.pop("source_language")
+        self.assertFalse(VALIDATOR.is_valid(session))
+        session = deepcopy(SAMPLES[2])
+        session["participants"][0].pop("preferred_language")
+        self.assertFalse(VALIDATOR.is_valid(session))
+
+        duplicate_ref = {"kind": "local", "key": "context/1"}
+        session = deepcopy(SAMPLES[2])
+        session["context_refs"] = [duplicate_ref, duplicate_ref]
+        self.assertFalse(VALIDATOR.is_valid(session))
+        session = deepcopy(SAMPLES[2])
+        session["terminology_refs"] = [duplicate_ref, duplicate_ref]
+        self.assertFalse(VALIDATOR.is_valid(session))
+
+        session = deepcopy(SAMPLES[2])
+        session["processing_location"] = "remote_with_consent"
+        self.assertFalse(VALIDATOR.is_valid(session))
+        session["consent_grant_ids"] = ["10000000-0000-4000-8000-000000000001"]
+        self.assertTrue(VALIDATOR.is_valid(session))
 
     def test_translation_request_binds_session_revision_and_execution_mode(self) -> None:
         request = deepcopy(SAMPLES[4])

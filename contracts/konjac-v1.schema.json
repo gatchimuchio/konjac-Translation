@@ -53,16 +53,17 @@
       "allOf": [
         {"$ref": "#/$defs/base"},
         {
+          "$comment": "Runtime validation additionally requires expires_at > granted_at when expiry is present.",
           "properties": {
             "record_type": {"const": "ConsentGrant"},
             "principal_id": {"type": "string", "minLength": 1, "maxLength": 256},
             "scope": {"$ref": "#/$defs/consentScope"},
-            "subject_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+            "subject_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "minItems": 1, "uniqueItems": true},
             "granted_at": {"$ref": "#/$defs/timestamp"},
-            "expires_at": {"$ref": "#/$defs/timestamp"},
-            "evidence_ref": {"$ref": "#/$defs/reference"}
+            "expires_at": {"type": ["string", "null"], "format": "date-time"},
+            "evidence_ref": {"anyOf": [{"$ref": "#/$defs/reference"}, {"type": "null"}]}
           },
-          "required": ["principal_id", "scope", "subject_ids", "granted_at"]
+          "required": ["principal_id", "scope", "subject_ids", "granted_at", "expires_at", "evidence_ref"]
         }
       ],
       "unevaluatedProperties": false
@@ -114,30 +115,34 @@
       "properties": {
         "participant_id": {"$ref": "#/$defs/id"},
         "role": {"enum": ["owner", "speaker", "listener", "service"]},
-        "preferred_language": {"$ref": "#/$defs/languageTag"},
+        "preferred_language": {"anyOf": [{"$ref": "#/$defs/languageTag"}, {"type": "null"}]},
         "consent_grant_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true}
       },
-      "required": ["participant_id", "role", "consent_grant_ids"],
+      "required": ["participant_id", "role", "preferred_language", "consent_grant_ids"],
       "additionalProperties": false
     },
     "TranslationSession": {
       "allOf": [
         {"$ref": "#/$defs/base"},
         {
+          "$comment": "Runtime validation additionally enforces unique participant IDs and reference integrity.",
           "properties": {
             "record_type": {"const": "TranslationSession"},
-            "revision": {"type": "integer", "minimum": 1},
+            "revision": {"type": "integer", "minimum": 1, "maximum": 18446744073709551615},
             "status": {"enum": ["active", "paused", "closed"]},
-            "source_language": {"oneOf": [{"$ref": "#/$defs/languageTag"}, {"const": "und"}]},
+            "source_language": {"anyOf": [{"$ref": "#/$defs/languageTag"}, {"type": "null"}]},
             "target_languages": {"type": "array", "items": {"$ref": "#/$defs/languageTag"}, "minItems": 1, "uniqueItems": true},
             "participants": {"type": "array", "items": {"$ref": "#/$defs/participant"}, "minItems": 1},
-            "context_refs": {"type": "array", "items": {"$ref": "#/$defs/reference"}},
-            "terminology_refs": {"type": "array", "items": {"$ref": "#/$defs/reference"}},
+            "context_refs": {"type": "array", "items": {"$ref": "#/$defs/reference"}, "uniqueItems": true},
+            "terminology_refs": {"type": "array", "items": {"$ref": "#/$defs/reference"}, "uniqueItems": true},
             "processing_location": {"enum": ["local_only", "remote_with_consent"]},
             "consent_grant_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
             "retention": {"enum": ["ephemeral", "session", "user_managed"]}
           },
-          "required": ["revision", "status", "source_language", "target_languages", "participants", "context_refs", "terminology_refs", "processing_location", "consent_grant_ids", "retention"]
+          "required": ["revision", "status", "source_language", "target_languages", "participants", "context_refs", "terminology_refs", "processing_location", "consent_grant_ids", "retention"],
+          "allOf": [
+            {"if": {"properties": {"processing_location": {"const": "remote_with_consent"}}, "required": ["processing_location"]}, "then": {"properties": {"consent_grant_ids": {"minItems": 1}}}}
+          ]
         }
       ],
       "unevaluatedProperties": false
