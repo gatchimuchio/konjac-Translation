@@ -54,7 +54,7 @@ HTTP境界は [`contracts/openapi-v1.json`](../contracts/openapi-v1.json) に定
 
 成功状態の訳文にはエンジン実行IDが必要。`UNSUPPORTED`／`SUSPEND`／`FAILED` 等の訳文欄は `null` とし、`COMPLETED` は少なくとも一つの訳結果とエンジン実行証跡を要求する。外部配信は別記録で、`DELIVERED` は配信許可と完了時刻、`DELIVERY_UNKNOWN` は許可と状態不確実性を残す。
 
-JSON Schemaで強制するのはレコード形状と局所条件まで。ID参照の存在、許可の対象一致・期限・撤回、時刻の前後関係、同一要求の排他・冪等性、イベント順序、永続化、再起動後の復旧、実際の配信停止はランタイム実装と全体QCで別途保証しなければならない。現状これらのランタイムは未実装。
+JSON Schemaで強制するのはレコード形状と局所条件まで。Rustには同一session/keyの完全一致要求を排他予約する`RequestIdempotencyStore`とプロセス内参照実装がある。同じキーで本文、要求版、attemptが変わればConflictとし、完全一致再送はReplayとして再実行しない。これは永続性や結果取得を提供せず、API/サービス実行経路にも未結線である。ID参照の存在、永続排他、イベント追記、再起動後の復旧、実際の配信停止は全体QCで別途保証しなければならない。
 
 ## 4. 入力から出力への正規境界
 
@@ -83,6 +83,6 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 ```
 
-Python 16件はJSON Schema/OpenAPI射影、BCP 47タグ形式、要求版条件、未対応結果の無訳文条件と能力ゲートを検査する。Rust 27件は論理record、BCP 47構文・正規化、不正言語タグ、同意の主体/対象/用途/期限/撤回と重複grant ID拒否、媒体取得/local・remote処理権限とDeliver scopeのartifact-bound preflight、厳密版能力ゲート、能力次元と許可集合の完全一致、アクティブsession/request/input各版、SourceAsset/Span／実行／全訳先結果参照、request時間窓、未対応・期限・取消時の実行前停止とevent順序を検査する。両者とも限定した契約QCであり、IANA registry有効性、エンジン対応、実配信、射影全同値、認証、永続同意、MINIDORA実行・実訳、実行中停止、サービス統合、対象端末QAの証拠ではない。
+Python 16件はJSON Schema/OpenAPI射影、BCP 47タグ形式、要求版条件、未対応結果の無訳文条件と能力ゲートを検査する。Rust 30件は論理record、BCP 47構文・正規化、不正言語タグ、同意の主体/対象/用途/期限/撤回と重複grant ID拒否、媒体取得/local・remote処理権限とDeliver scopeのartifact-bound preflight、session-scoped冪等claimの完全一致/Conflict/並行予約、厳密版能力ゲート、能力次元と許可集合の完全一致、アクティブsession/request/input各版、SourceAsset/Span／実行／全訳先結果参照、request時間窓、未対応・期限・取消時の実行前停止とevent順序を検査する。両者とも限定した契約QCであり、IANA registry有効性、エンジン対応、実配信、永続冪等台帳、再起動復旧、射影全同値、認証、永続同意、MINIDORA実行・実訳、実行中停止、サービス統合、対象端末QAの証拠ではない。
 
 実訳受入をPASSへ上げるには、新たに許可されたMINIDORA版の固定commit、公開API、対象言語ペア、文脈、停止／取消の実測、全件証跡が必要。別エンジンの出力や作用注入例で代替しない。
