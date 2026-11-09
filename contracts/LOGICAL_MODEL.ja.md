@@ -53,7 +53,7 @@ MINIDORAの厳密な配布版／commit、公開入口、要求ID、能力照会�
 
 ## 4. 実装・シリアライズ射影
 
-Rust共通基盤は本論理モデルの第一実装で、[`crates/konjac-core`](../crates/konjac-core)に7中核record、同意grant/revocation、TranslationResult/Event、主要な局所不変条件、セッション・入力版・SourceAsset・spanの参照検査、全入力/訳先対応の境界検証、言語ペア・文脈要否・実行モードを束縛した閉鎖型能力許可を実装した。EngineRunResult検査は入力span、アクティブセッションと版、要求対象、許可集合、実行証跡のエンジン・能力証拠、訳結果の対応を横断照合する。永続化、状態遷移全体、OS権限、観測/監査保管、保存時のsequence採番と原子的追記は未実装であり、G2/W01/W02は未完了。現在の[`konjac-v1.schema.json`](konjac-v1.schema.json)と[`openapi-v1.json`](openapi-v1.json)は検証可能なJSON射影だが、論理モデルやRust型の全項目・状態を完全に表現していない。G2で生成/検査関係と残る欠落を閉じる。JSON Schema/OpenAPI形式を将来のコンパイル基盤やOS SDKへ漏出させない。
+Rust共通基盤は本論理モデルの第一実装で、[`crates/konjac-core`](../crates/konjac-core)に7中核record、同意grant/revocation、TranslationResult/Event、主要な局所不変条件、セッション・入力版・SourceAsset・spanの参照検査、全入力/訳先対応の境界検証、言語ペア・文脈要否・実行モードを束縛した閉鎖型能力許可を実装した。EngineRunResult検査は入力span、アクティブセッションと版、要求対象、許可集合、実行証跡のエンジン・能力証拠、訳結果の対応を横断照合する。永続化、状態遷移全体、OS権限、観測/監査保管、保存時のsequence採番と原子的追記は未実装であり、G2/W01/W02は未完了。現在の[`konjac-v1.schema.json`](konjac-v1.schema.json)と[`openapi-v1.json`](openapi-v1.json)は検証可能なJSON射影だが、論理モデルやRust型の全項目・状態を完全に表現していない。`LogicalRecord::to_exchange_value`/`from_exchange_value`はlogical `contract_version`とwire `schema_version`を明示的に写像し、schema版・Envelope・レコード検証を両方向で行う。これはwire field projection adapterであり、論理契約をJSON Schema/OpenAPI形式へ固定しない。残るフィールド/状態の射影差分をG2で閉じる。
 
 `execute_guarded_at`は期限・取消時刻を比較し、先に成立した終端理由があれば能力照会前に停止する。入力時刻の矛盾も拒否するが、実行中の取消伝播・停止確認は実装していない。
 

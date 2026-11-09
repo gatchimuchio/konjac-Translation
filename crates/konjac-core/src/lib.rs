@@ -19,6 +19,7 @@ pub mod engine;
 pub mod idempotency;
 
 pub const LOGICAL_CONTRACT_VERSION: &str = "1.0.0";
+pub const EXCHANGE_SCHEMA_VERSION: &str = "1.0.0";
 
 /// A validated BCP 47 language identifier, kept separate from display names.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
@@ -1316,6 +1317,60 @@ impl LogicalRecord {
             Self::DeliveryArtifact(record) => record.validate(),
         }
     }
+
+    /// Converts a validated logical record to the public exchange envelope.
+    /// The logical contract version is not serialized as the wire schema version.
+    pub fn to_exchange_value(&self) -> Result<serde_json::Value, ExchangeCodecError> {
+        self.validate()?;
+        let mut value = serde_json::to_value(self)?;
+        let object = value
+            .as_object_mut()
+            .ok_or(ExchangeCodecError::InvalidEnvelope)?;
+        if object.remove("contract_version").is_none() {
+            return Err(ExchangeCodecError::InvalidEnvelope);
+        }
+        object.insert(
+            "schema_version".into(),
+            serde_json::Value::String(EXCHANGE_SCHEMA_VERSION.into()),
+        );
+        Ok(value)
+    }
+
+    /// Converts a public exchange envelope into a validated logical record.
+    pub fn from_exchange_value(mut value: serde_json::Value) -> Result<Self, ExchangeCodecError> {
+        let object = value
+            .as_object_mut()
+            .ok_or(ExchangeCodecError::InvalidEnvelope)?;
+        let schema_version = object
+            .remove("schema_version")
+            .and_then(|version| version.as_str().map(str::to_owned))
+            .ok_or(ExchangeCodecError::InvalidEnvelope)?;
+        if schema_version != EXCHANGE_SCHEMA_VERSION {
+            return Err(ExchangeCodecError::UnsupportedSchemaVersion(schema_version));
+        }
+        if object.contains_key("contract_version") {
+            return Err(ExchangeCodecError::InvalidEnvelope);
+        }
+        object.insert(
+            "contract_version".into(),
+            serde_json::Value::String(LOGICAL_CONTRACT_VERSION.into()),
+        );
+        let record: Self = serde_json::from_value(value)?;
+        record.validate()?;
+        Ok(record)
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum ExchangeCodecError {
+    #[error("exchange record envelope is malformed")]
+    InvalidEnvelope,
+    #[error("unsupported exchange schema version: {0}")]
+    UnsupportedSchemaVersion(String),
+    #[error("logical record validation failed: {0}")]
+    Contract(#[from] ContractError),
+    #[error("record JSON conversion failed: {0}")]
+    Serde(#[from] serde_json::Error),
 }
 
 #[derive(Clone, Debug, Error, PartialEq, Eq)]
@@ -1640,15 +1695,49 @@ mod tests {
     }
 
     #[test]
-    fn tagged_record_round_trips_with_logical_discriminator() {
+    fn exchange_codec_keeps_wire_and_logical_versions_distinct() {
         let record =
             LogicalRecord::TranslationRequest(request(ProcessingLocation::LocalOnly, None));
-        let encoded = serde_json::to_value(&record).unwrap();
+        let encoded = record.to_exchange_value().unwrap();
+        assert_eq!(encoded["schema_version"], EXCHANGE_SCHEMA_VERSION);
+        assert!(encoded.get("contract_version").is_none());
         assert_eq!(encoded["record_type"], "TranslationRequest");
         assert_eq!(
-            serde_json::from_value::<LogicalRecord>(encoded).unwrap(),
+            LogicalRecord::from_exchange_value(encoded.clone()).unwrap(),
             record
         );
+
+        let mut unsupported = encoded.clone();
+        unsupported["schema_version"] = serde_json::Value::String("2.0.0".into());
+        assert!(matches!(
+            LogicalRecord::from_exchange_value(unsupported),
+            Err(ExchangeCodecError::UnsupportedSchemaVersion(version)) if version == "2.0.0"
+        ));
+
+        let mut leaked_contract_version = encoded;
+        leaked_contract_version["contract_version"] =
+            serde_json::Value::String(LOGICAL_CONTRACT_VERSION.into());
+        assert!(matches!(
+            LogicalRecord::from_exchange_value(leaked_contract_version),
+            Err(ExchangeCodecError::InvalidEnvelope)
+        ));
+
+        let mut missing_version = record.to_exchange_value().unwrap();
+        missing_version
+            .as_object_mut()
+            .unwrap()
+            .remove("schema_version");
+        assert!(matches!(
+            LogicalRecord::from_exchange_value(missing_version),
+            Err(ExchangeCodecError::InvalidEnvelope)
+        ));
+
+        let mut unknown_field = record.to_exchange_value().unwrap();
+        unknown_field["unexpected"] = serde_json::Value::Bool(true);
+        assert!(matches!(
+            LogicalRecord::from_exchange_value(unknown_field),
+            Err(ExchangeCodecError::Serde(_))
+        ));
     }
 
     #[test]
