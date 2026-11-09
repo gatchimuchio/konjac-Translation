@@ -83,6 +83,6 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 ```
 
-Python 16件はJSON Schema/OpenAPI射影、BCP 47タグ形式、要求版条件、未対応結果の無訳文条件と能力ゲートを検査する。Rust 32件は論理record、BCP 47構文・正規化、不正言語タグ、同意の主体/対象/用途/期限/撤回と重複grant ID拒否、媒体取得/local・remote処理権限とDeliver scopeのartifact-bound preflight、session-scoped冪等claimの完全一致/Conflict/並行予約、ページ間event cursorのsequence・初回Accepted・時刻・終端/配送順、厳密版能力ゲート、能力次元と許可集合の完全一致、アクティブsession/request/input各版、SourceAsset/Span／実行／全訳先結果参照、request時間窓、未対応・期限・取消時の実行前停止を検査する。両者とも限定した契約QCであり、IANA registry有効性、エンジン対応、実配信、永続冪等台帳/event log、再起動復旧、射影全同値、認証、永続同意、MINIDORA実行・実訳、実行中停止、サービス統合、対象端末QAの証拠ではない。
+Python 17件（JSON Schema/OpenAPI 13件、能力ゲート4件）は射影形状、BCP 47タグ形式、要求版条件、未対応結果の無訳文条件、event typeごとのvariant/result/artifact参照要件と能力ゲートを検査する。Rust 32件は論理record、BCP 47構文・正規化、不正言語タグ、同意の主体/対象/用途/期限/撤回と重複grant ID拒否、媒体取得/local・remote処理権限とDeliver scopeのartifact-bound preflight、session-scoped冪等claimの完全一致/Conflict/並行予約、ページ間event cursorのsequence・初回Accepted・時刻・終端/配送順、厳密版能力ゲート、能力次元と許可集合の完全一致、アクティブsession/request/input各版、SourceAsset/Span／実行／全訳先結果参照、request時間窓、未対応・期限・取消時の実行前停止を検査する。両者とも限定した契約QCであり、IANA registry有効性、エンジン対応、実配信、永続冪等台帳/event log、再起動復旧、射影全同値、認証、永続同意、MINIDORA実行・実訳、実行中停止、サービス統合、対象端末QAの証拠ではない。
 
 実訳受入をPASSへ上げるには、新たに許可されたMINIDORA版の固定commit、公開API、対象言語ペア、文脈、停止／取消の実測、全件証跡が必要。別エンジンの出力や作用注入例で代替しない。

@@ -310,8 +310,14 @@
             "event_type": {"enum": ["accepted", "processing", "variant_updated", "completed", "unsupported", "suspended", "failed", "cancelled", "timed_out", "delivery_updated"]},
             "variant_id": {"$ref": "#/$defs/id"},
             "result_id": {"$ref": "#/$defs/id"},
+            "delivery_artifact_id": {"$ref": "#/$defs/id"},
             "occurred_at": {"$ref": "#/$defs/timestamp"}
           },
+          "allOf": [
+            {"if": {"properties": {"event_type": {"const": "variant_updated"}}, "required": ["event_type"]}, "then": {"required": ["variant_id"]}},
+            {"if": {"properties": {"event_type": {"enum": ["completed", "unsupported", "suspended", "failed", "cancelled", "timed_out"]}}, "required": ["event_type"]}, "then": {"required": ["result_id"]}},
+            {"if": {"properties": {"event_type": {"const": "delivery_updated"}}, "required": ["event_type"]}, "then": {"required": ["delivery_artifact_id"]}}
+          ],
           "required": ["request_id", "sequence", "event_type", "occurred_at"]
         }
       ],

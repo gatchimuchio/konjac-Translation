@@ -36,7 +36,7 @@ SAMPLES = [
     record("TranslationVariant", "10000000-0000-4000-8000-000000000008", request_id="10000000-0000-4000-8000-000000000006", source_span_id="10000000-0000-4000-8000-000000000005", target_language="en", revision=1, status="UNSUPPORTED", text=None, produced_at=STAMP),
     record("TranslationResult", "10000000-0000-4000-8000-000000000009", request_id="10000000-0000-4000-8000-000000000006", request_revision=1, status="UNSUPPORTED", variant_ids=[], engine_execution_ids=["10000000-0000-4000-8000-000000000007"], failure_code="CAPABILITY_NOT_EXPOSED", completed_at=STAMP),
     record("DeliveryArtifact", "10000000-0000-4000-8000-000000000010", request_id="10000000-0000-4000-8000-000000000006", variant_id="10000000-0000-4000-8000-000000000008", format="text", destination="local-view", payload_ref={"kind": "local", "key": "result/10000000-0000-4000-8000-000000000009"}, status="READY"),
-    record("TranslationEvent", "10000000-0000-4000-8000-000000000011", request_id="10000000-0000-4000-8000-000000000006", sequence=1, event_type="unsupported", occurred_at=STAMP),
+    record("TranslationEvent", "10000000-0000-4000-8000-000000000011", request_id="10000000-0000-4000-8000-000000000006", sequence=1, event_type="unsupported", result_id="10000000-0000-4000-8000-000000000009", occurred_at=STAMP),
     record("ConsentRevocation", "10000000-0000-4000-8000-000000000012", grant_id="10000000-0000-4000-8000-000000000001", revoked_by="owner", revoked_at=STAMP, reason_code="USER_REQUEST"),
 ]
 
@@ -53,6 +53,29 @@ class ContractSchemaTests(unittest.TestCase):
         for sample in SAMPLES:
             with self.subTest(record_type=sample["record_type"]):
                 VALIDATOR.validate(sample)
+
+    def test_events_require_references_for_their_event_type(self) -> None:
+        event = deepcopy(SAMPLES[9])
+        for reference in ("variant_id", "result_id", "delivery_artifact_id"):
+            event.pop(reference, None)
+
+        required_references = {
+            "variant_updated": "variant_id",
+            "completed": "result_id",
+            "unsupported": "result_id",
+            "suspended": "result_id",
+            "failed": "result_id",
+            "cancelled": "result_id",
+            "timed_out": "result_id",
+            "delivery_updated": "delivery_artifact_id",
+        }
+        for event_type, reference in required_references.items():
+            with self.subTest(event_type=event_type):
+                event["event_type"] = event_type
+                event[reference] = "10000000-0000-4000-8000-000000000013"
+                VALIDATOR.validate(event)
+                event.pop(reference)
+                self.assertFalse(VALIDATOR.is_valid(event))
 
     def test_language_tags_follow_bcp47_subtag_order(self) -> None:
         session = deepcopy(SAMPLES[2])
