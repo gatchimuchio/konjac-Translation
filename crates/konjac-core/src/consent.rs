@@ -31,10 +31,15 @@ impl<'a> ConsentRegistry<'a> {
         subject_id: Uuid,
         at: DateTime<Utc>,
     ) -> bool {
-        let Some(grant) = self.grants.iter().find(|grant| grant.record_id == grant_id) else {
+        let mut matching_grants = self
+            .grants
+            .iter()
+            .filter(|grant| grant.record_id == grant_id);
+        let Some(grant) = matching_grants.next() else {
             return false;
         };
-        if grant.validate().is_err()
+        if matching_grants.next().is_some()
+            || grant.validate().is_err()
             || grant.principal_id != principal_id
             || grant.scope != scope
             || !grant.subject_ids.contains(&subject_id)
@@ -135,6 +140,22 @@ mod tests {
             ConsentScope::ProcessRemote,
             Uuid::from_u128(2),
             at(4)
+        ));
+    }
+
+    #[test]
+    fn duplicate_grant_identity_is_ambiguous_and_fails_closed() {
+        let valid = grant(ConsentScope::ProcessRemote, None);
+        let mut duplicate = valid.clone();
+        duplicate.scope = ConsentScope::Deliver;
+        let grants = [valid, duplicate];
+        let registry = ConsentRegistry::new(&grants, &[]);
+        assert!(!registry.authorizes(
+            Uuid::from_u128(1),
+            "participant-1",
+            ConsentScope::ProcessRemote,
+            Uuid::from_u128(2),
+            at(2)
         ));
     }
 }
