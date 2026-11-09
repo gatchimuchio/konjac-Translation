@@ -339,18 +339,20 @@
           "properties": {
             "record_type": {"const": "TranslationResult"},
             "request_id": {"$ref": "#/$defs/id"},
-            "request_revision": {"type": "integer", "minimum": 1},
+            "request_revision": {"type": "integer", "minimum": 1, "maximum": 18446744073709551615},
             "status": {"enum": ["PENDING", "PROCESSING", "COMPLETED", "PARTIAL", "UNSUPPORTED", "SUSPEND", "FAILED", "CANCELLED", "TIMED_OUT"]},
             "variant_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
             "engine_execution_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
-            "failure_code": {"type": "string", "maxLength": 128},
-            "completed_at": {"$ref": "#/$defs/timestamp"}
+            "failure_code": {"type": ["string", "null"], "minLength": 1, "maxLength": 128},
+            "completed_at": {"type": ["string", "null"], "format": "date-time"}
           },
-          "required": ["request_id", "request_revision", "status", "variant_ids", "engine_execution_ids"]
+          "required": ["request_id", "request_revision", "status", "variant_ids", "engine_execution_ids", "failure_code", "completed_at"]
         },
         {"if": {"properties": {"status": {"enum": ["COMPLETED", "PARTIAL"]}}, "required": ["status"]}, "then": {"required": ["completed_at"], "properties": {"variant_ids": {"minItems": 1}, "engine_execution_ids": {"minItems": 1}}}},
-        {"if": {"properties": {"status": {"enum": ["UNSUPPORTED", "SUSPEND"]}}, "required": ["status"]}, "then": {"required": ["completed_at", "failure_code"], "properties": {"variant_ids": {"maxItems": 0}}}},
-        {"if": {"properties": {"status": {"enum": ["FAILED", "CANCELLED", "TIMED_OUT"]}}, "required": ["status"]}, "then": {"required": ["completed_at"], "properties": {"variant_ids": {"maxItems": 0}}}}
+        {"if": {"properties": {"status": {"enum": ["UNSUPPORTED", "SUSPEND"]}}, "required": ["status"]}, "then": {"properties": {"completed_at": {"$ref": "#/$defs/timestamp"}, "failure_code": {"type": "string", "minLength": 1, "maxLength": 128}, "variant_ids": {"maxItems": 0}}}},
+        {"if": {"properties": {"status": {"enum": ["FAILED", "CANCELLED", "TIMED_OUT"]}}, "required": ["status"]}, "then": {"required": ["completed_at"], "properties": {"variant_ids": {"maxItems": 0}}}},
+        {"if": {"properties": {"status": {"enum": ["PENDING", "PROCESSING"]}}, "required": ["status"]}, "then": {"properties": {"completed_at": {"type": "null"}}}},
+        {"if": {"properties": {"status": {"enum": ["COMPLETED", "PARTIAL", "UNSUPPORTED", "SUSPEND", "FAILED", "CANCELLED", "TIMED_OUT"]}}, "required": ["status"]}, "then": {"properties": {"completed_at": {"$ref": "#/$defs/timestamp"}}}}
       ],
       "unevaluatedProperties": false
     },

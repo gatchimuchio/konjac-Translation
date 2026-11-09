@@ -284,8 +284,42 @@ class ContractSchemaTests(unittest.TestCase):
         self.assertFalse(VALIDATOR.is_valid(result))
         result["variant_ids"] = ["10000000-0000-4000-8000-000000000008"]
         result["engine_execution_ids"] = ["10000000-0000-4000-8000-000000000007"]
-        result.pop("failure_code")
         self.assertTrue(VALIDATOR.is_valid(result))
+
+    def test_translation_result_status_conditions_match_rust_option_fields(self) -> None:
+        result = deepcopy(SAMPLES[7])
+        result["status"] = "PENDING"
+        result["variant_ids"] = []
+        result["engine_execution_ids"] = []
+        result["failure_code"] = None
+        result["completed_at"] = None
+        VALIDATOR.validate(result)
+
+        result.pop("completed_at")
+        self.assertFalse(VALIDATOR.is_valid(result))
+        result["completed_at"] = STAMP
+        self.assertFalse(VALIDATOR.is_valid(result))
+        result["completed_at"] = None
+        result["status"] = "PROCESSING"
+        VALIDATOR.validate(result)
+
+        result["status"] = "UNSUPPORTED"
+        result["completed_at"] = STAMP
+        self.assertFalse(VALIDATOR.is_valid(result))
+        result["failure_code"] = "CAPABILITY_NOT_EXPOSED"
+        VALIDATOR.validate(result)
+        result["failure_code"] = ""
+        self.assertFalse(VALIDATOR.is_valid(result))
+        result["failure_code"] = "x" * 129
+        self.assertFalse(VALIDATOR.is_valid(result))
+
+        result["status"] = "PENDING"
+        result["failure_code"] = None
+        result["completed_at"] = None
+        result["request_revision"] = 18446744073709551615
+        VALIDATOR.validate(result)
+        result["request_revision"] += 1
+        self.assertFalse(VALIDATOR.is_valid(result))
 
     def test_unsupported_result_cannot_include_translation_variants(self) -> None:
         result = deepcopy(SAMPLES[7])

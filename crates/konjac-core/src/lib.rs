@@ -998,7 +998,12 @@ define_record!(TranslationResult {
 impl TranslationResult {
     pub fn validate(&self) -> Result<(), ContractError> {
         validate_base(&self.contract_version, "TranslationResult")?;
-        if self.request_revision == 0 || self.failure_code.as_deref().is_some_and(str::is_empty) {
+        if self.request_revision == 0
+            || self
+                .failure_code
+                .as_deref()
+                .is_some_and(|code| code.is_empty() || code.chars().count() > 128)
+        {
             return Err(ContractError::InvalidResult);
         }
         validate_unique(&self.variant_ids)?;
@@ -1698,6 +1703,52 @@ mod tests {
         let mut fabricated = result;
         fabricated.variant_ids.push(Uuid::from_u128(10));
         assert_eq!(fabricated.validate(), Err(ContractError::InvalidResult));
+    }
+
+    #[test]
+    fn translation_result_status_controls_completion_and_failure_evidence() {
+        let mut result = TranslationResult {
+            contract_version: LOGICAL_CONTRACT_VERSION.into(),
+            record_id: Uuid::from_u128(80),
+            created_at: at(1),
+            request_id: Uuid::from_u128(1),
+            request_revision: 1,
+            status: TranslationResultStatus::Pending,
+            variant_ids: vec![],
+            engine_execution_ids: vec![],
+            failure_code: None,
+            completed_at: None,
+        };
+        assert_eq!(result.validate(), Ok(()));
+        let wire = serde_json::to_value(&result).unwrap();
+        assert!(wire["failure_code"].is_null());
+        assert!(wire["completed_at"].is_null());
+
+        result.status = TranslationResultStatus::Processing;
+        assert_eq!(result.validate(), Ok(()));
+        result.completed_at = Some(at(2));
+        assert_eq!(result.validate(), Err(ContractError::InvalidResult));
+        result.completed_at = None;
+
+        result.status = TranslationResultStatus::Completed;
+        assert_eq!(result.validate(), Err(ContractError::InvalidResult));
+        result.completed_at = Some(at(2));
+        result.variant_ids.push(Uuid::from_u128(81));
+        result.engine_execution_ids.push(Uuid::from_u128(82));
+        assert_eq!(result.validate(), Ok(()));
+
+        result.failure_code = Some(String::new());
+        assert_eq!(result.validate(), Err(ContractError::InvalidResult));
+        result.failure_code = Some("x".repeat(129));
+        assert_eq!(result.validate(), Err(ContractError::InvalidResult));
+        result.failure_code = None;
+
+        result.status = TranslationResultStatus::Unsupported;
+        result.variant_ids.clear();
+        result.engine_execution_ids.clear();
+        assert_eq!(result.validate(), Err(ContractError::InvalidResult));
+        result.failure_code = Some("CAPABILITY_NOT_EXPOSED".into());
+        assert_eq!(result.validate(), Ok(()));
     }
 
     #[test]
