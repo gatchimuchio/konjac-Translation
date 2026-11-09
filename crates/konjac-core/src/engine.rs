@@ -107,7 +107,7 @@ impl ExecutionPermit {
         self.evidence.observed_at
     }
 
-    fn matches_execution(&self, execution: &EngineExecution) -> bool {
+    pub(crate) fn matches_execution(&self, execution: &EngineExecution) -> bool {
         execution.engine_name == self.engine.name
             && execution.engine_version == self.engine.version
             && execution.engine_revision == self.engine.revision

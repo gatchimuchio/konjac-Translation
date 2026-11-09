@@ -1,19 +1,35 @@
 //! External delivery authorization preflight.
 //!
-//! This module creates artifact-bound permits only after checking the named
-//! grant. It does not perform delivery or provide durable/atomic authorization;
-//! adapters must revalidate immediately before side effects.
+//! This module creates artifact-bound permits only after checking that the
+//! artifact references a final variant with successful engine evidence and an
+//! active delivery grant. It does not perform delivery or provide durable/
+//! atomic authorization; adapters must revalidate immediately before side effects.
 
 use chrono::{DateTime, Utc};
 use thiserror::Error;
 
 use crate::consent::ConsentRegistry;
-use crate::engine::AuthorizationContext;
-use crate::{ConsentScope, DeliveryArtifact, DeliveryStatus};
+use crate::engine::{AuthorizationContext, ExecutionPermit};
+use crate::{
+    ConsentScope, DeliveryArtifact, DeliveryStatus, EngineExecution, SourceSpan,
+    TranslationVariant, VariantStatus,
+};
+
+#[derive(Clone, Copy, Debug)]
+pub struct DeliveryEvidence<'a> {
+    pub variant: &'a TranslationVariant,
+    pub source_span: &'a SourceSpan,
+    pub execution: &'a EngineExecution,
+    pub execution_permit: &'a ExecutionPermit,
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DeliveryPermit {
     artifact: DeliveryArtifact,
+    variant: TranslationVariant,
+    source_span: SourceSpan,
+    execution: EngineExecution,
+    execution_permit: ExecutionPermit,
     principal_id: String,
 }
 
@@ -23,12 +39,20 @@ impl DeliveryPermit {
     pub fn validate_for(
         &self,
         artifact: &DeliveryArtifact,
+        evidence: &DeliveryEvidence<'_>,
         authorization: &AuthorizationContext<'_>,
         now: DateTime<Utc>,
     ) -> Result<(), DeliveryAuthorizationError> {
-        if artifact != &self.artifact || artifact.status != DeliveryStatus::Authorized {
+        if artifact != &self.artifact
+            || evidence.variant != &self.variant
+            || evidence.source_span != &self.source_span
+            || evidence.execution != &self.execution
+            || evidence.execution_permit != &self.execution_permit
+            || artifact.status != DeliveryStatus::Authorized
+        {
             return Err(DeliveryAuthorizationError::PermitMismatch);
         }
+        validate_delivery_evidence(artifact, evidence)?;
         if authorization.principal_id != self.principal_id {
             return Err(DeliveryAuthorizationError::AuthorizationDenied);
         }
@@ -53,6 +77,7 @@ impl DeliveryPermit {
 /// `Prepared`, terminal and uncertain artifacts must be handled elsewhere.
 pub fn authorize_delivery_at(
     artifact: &DeliveryArtifact,
+    evidence: &DeliveryEvidence<'_>,
     authorization: &AuthorizationContext<'_>,
     now: DateTime<Utc>,
 ) -> Result<DeliveryPermit, DeliveryAuthorizationError> {
@@ -62,6 +87,7 @@ pub fn authorize_delivery_at(
     if artifact.status != DeliveryStatus::Authorized {
         return Err(DeliveryAuthorizationError::ArtifactNotAuthorized);
     }
+    validate_delivery_evidence(artifact, evidence)?;
     let grant_id = artifact
         .delivery_consent_id
         .ok_or(DeliveryAuthorizationError::AuthorizationDenied)?;
@@ -77,8 +103,41 @@ pub fn authorize_delivery_at(
 
     Ok(DeliveryPermit {
         artifact: artifact.clone(),
+        variant: evidence.variant.clone(),
+        source_span: evidence.source_span.clone(),
+        execution: evidence.execution.clone(),
+        execution_permit: evidence.execution_permit.clone(),
         principal_id: authorization.principal_id.to_owned(),
     })
+}
+
+fn validate_delivery_evidence(
+    artifact: &DeliveryArtifact,
+    evidence: &DeliveryEvidence<'_>,
+) -> Result<(), DeliveryAuthorizationError> {
+    let variant = evidence.variant;
+    let source_span = evidence.source_span;
+    let execution = evidence.execution;
+    let execution_permit = evidence.execution_permit;
+    if artifact.variant_id != variant.record_id {
+        return Err(DeliveryAuthorizationError::VariantReferenceMismatch);
+    }
+    if variant.status != VariantStatus::Final {
+        return Err(DeliveryAuthorizationError::VariantNotFinal);
+    }
+    source_span
+        .validate()
+        .map_err(|_| DeliveryAuthorizationError::InvalidTranslationEvidence)?;
+    if source_span.record_id != variant.source_span_id
+        || execution_permit.query().source_language != source_span.source_language
+        || execution_permit.query().target_language != variant.target_language
+        || !execution_permit.matches_execution(execution)
+    {
+        return Err(DeliveryAuthorizationError::InvalidTranslationEvidence);
+    }
+    variant
+        .validate_against(execution)
+        .map_err(|_| DeliveryAuthorizationError::InvalidTranslationEvidence)
 }
 
 #[derive(Clone, Debug, Error, PartialEq, Eq)]
@@ -87,6 +146,12 @@ pub enum DeliveryAuthorizationError {
     InvalidArtifact,
     #[error("delivery artifact is not in the authorized state")]
     ArtifactNotAuthorized,
+    #[error("delivery artifact does not reference the supplied translation variant")]
+    VariantReferenceMismatch,
+    #[error("only a final translation variant may be delivered")]
+    VariantNotFinal,
+    #[error("translation variant is not backed by the supplied successful execution")]
+    InvalidTranslationEvidence,
     #[error("delivery consent does not authorize this principal and artifact")]
     AuthorizationDenied,
     #[error("delivery permit does not match the exact authorized artifact")]
@@ -96,7 +161,12 @@ pub enum DeliveryAuthorizationError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ConsentGrant, ConsentRevocation, LOGICAL_CONTRACT_VERSION, ReferenceKind};
+    use crate::engine::{CapabilityQuery, EngineIdentity, require_capability};
+    use crate::{
+        CapabilityEvidence, CapabilityState, ConsentGrant, ConsentRevocation, ExecutionMode,
+        ExecutionOutcome, LOGICAL_CONTRACT_VERSION, LanguageTag, ObservationOrigin, ReferenceKind,
+        SourceSpan, SpanPayload, VariantStatus,
+    };
     use chrono::TimeZone;
     use uuid::Uuid;
 
@@ -133,6 +203,108 @@ mod tests {
         }
     }
 
+    fn execution() -> EngineExecution {
+        let revision = "a".repeat(40);
+        EngineExecution {
+            contract_version: LOGICAL_CONTRACT_VERSION.into(),
+            record_id: Uuid::from_u128(58),
+            created_at: at(1),
+            request_id: Uuid::from_u128(59),
+            engine_name: "MINIDORA-BETA".into(),
+            engine_version: "0.6.0b1".into(),
+            engine_revision: revision.clone(),
+            public_entry_point: "minidora.engine_beta.ミニドラβ実行機".into(),
+            capability: CapabilityEvidence {
+                capability_id: "translation.text.v1|source=ja|target=en|context=none|mode=batch"
+                    .into(),
+                state: CapabilityState::Supported,
+                engine_version: "0.6.0b1".into(),
+                engine_revision: revision,
+                reason_code: "TEST_FIXTURE_ONLY".into(),
+                observed_at: at(1),
+            },
+            input_fingerprint: "b".repeat(64),
+            response_fingerprint: Some("c".repeat(64)),
+            started_at: at(1),
+            finished_at: Some(at(2)),
+            outcome: ExecutionOutcome::Completed,
+            diagnostic_code: None,
+            trace_ref: None,
+        }
+    }
+
+    fn variant(execution: &EngineExecution) -> TranslationVariant {
+        TranslationVariant {
+            contract_version: LOGICAL_CONTRACT_VERSION.into(),
+            record_id: Uuid::from_u128(51),
+            created_at: at(1),
+            request_id: execution.request_id,
+            source_span_id: Uuid::from_u128(60),
+            target_language: "en".parse::<LanguageTag>().unwrap(),
+            revision: 1,
+            status: VariantStatus::Final,
+            text: Some("translation".into()),
+            engine_execution_id: Some(execution.record_id),
+            provenance_ref: None,
+            speaker_id: None,
+            position: None,
+            produced_at: at(2),
+        }
+    }
+
+    fn source_span() -> SourceSpan {
+        SourceSpan {
+            contract_version: LOGICAL_CONTRACT_VERSION.into(),
+            record_id: Uuid::from_u128(60),
+            created_at: at(1),
+            asset_id: Uuid::from_u128(61),
+            session_id: Uuid::from_u128(62),
+            revision: 1,
+            payload: SpanPayload::Text {
+                text: "source text".into(),
+            },
+            source_language: Some("ja".parse().unwrap()),
+            observation_origin: ObservationOrigin::Typed,
+            confidence: None,
+            speaker_id: None,
+            position: None,
+            provenance_ref: None,
+        }
+    }
+
+    fn execution_permit(
+        execution: &EngineExecution,
+        variant: &TranslationVariant,
+    ) -> ExecutionPermit {
+        let identity = EngineIdentity {
+            name: execution.engine_name.clone(),
+            version: execution.engine_version.clone(),
+            revision: execution.engine_revision.clone(),
+            public_entry_point: execution.public_entry_point.clone(),
+        };
+        let query = CapabilityQuery {
+            source_language: Some("ja".parse().unwrap()),
+            target_language: variant.target_language.clone(),
+            context_required: false,
+            execution_mode: ExecutionMode::Batch,
+        };
+        require_capability(&identity, &query, &execution.capability).unwrap()
+    }
+
+    fn delivery_evidence<'a>(
+        variant: &'a TranslationVariant,
+        source_span: &'a SourceSpan,
+        execution: &'a EngineExecution,
+        execution_permit: &'a ExecutionPermit,
+    ) -> DeliveryEvidence<'a> {
+        DeliveryEvidence {
+            variant,
+            source_span,
+            execution,
+            execution_permit,
+        }
+    }
+
     fn grant(grant_id: Uuid, scope: ConsentScope, subject_id: Uuid) -> ConsentGrant {
         ConsentGrant {
             contract_version: LOGICAL_CONTRACT_VERSION.into(),
@@ -151,6 +323,10 @@ mod tests {
     fn delivery_permit_binds_active_grant_to_exact_artifact_and_principal() {
         let grant_id = Uuid::from_u128(53);
         let artifact = artifact(grant_id);
+        let execution = execution();
+        let variant = variant(&execution);
+        let span = source_span();
+        let execution_permit = execution_permit(&execution, &variant);
         let grants = [grant(grant_id, ConsentScope::Deliver, artifact.record_id)];
         let authorization = AuthorizationContext {
             principal_id: "authenticated-owner",
@@ -158,17 +334,71 @@ mod tests {
             revocations: &[],
         };
 
-        let permit = authorize_delivery_at(&artifact, &authorization, at(2)).unwrap();
+        let permit = authorize_delivery_at(
+            &artifact,
+            &delivery_evidence(&variant, &span, &execution, &execution_permit),
+            &authorization,
+            at(2),
+        )
+        .unwrap();
         assert!(
             permit
-                .validate_for(&artifact, &authorization, at(2))
+                .validate_for(
+                    &artifact,
+                    &delivery_evidence(&variant, &span, &execution, &execution_permit),
+                    &authorization,
+                    at(2)
+                )
                 .is_ok()
         );
 
         let mut changed_artifact = artifact.clone();
         changed_artifact.destination.key = "recipient:other".into();
         assert_eq!(
-            permit.validate_for(&changed_artifact, &authorization, at(2)),
+            permit.validate_for(
+                &changed_artifact,
+                &delivery_evidence(&variant, &span, &execution, &execution_permit),
+                &authorization,
+                at(2)
+            ),
+            Err(DeliveryAuthorizationError::PermitMismatch)
+        );
+
+        let mut changed_variant = variant.clone();
+        changed_variant.text = Some("changed translation".into());
+        assert_eq!(
+            permit.validate_for(
+                &artifact,
+                &delivery_evidence(&changed_variant, &span, &execution, &execution_permit),
+                &authorization,
+                at(2)
+            ),
+            Err(DeliveryAuthorizationError::PermitMismatch)
+        );
+
+        let mut changed_span = span.clone();
+        changed_span.payload = crate::SpanPayload::Text {
+            text: "changed source".into(),
+        };
+        assert_eq!(
+            permit.validate_for(
+                &artifact,
+                &delivery_evidence(&variant, &changed_span, &execution, &execution_permit),
+                &authorization,
+                at(2)
+            ),
+            Err(DeliveryAuthorizationError::PermitMismatch)
+        );
+
+        let mut changed_execution = execution.clone();
+        changed_execution.response_fingerprint = Some("d".repeat(64));
+        assert_eq!(
+            permit.validate_for(
+                &artifact,
+                &delivery_evidence(&variant, &span, &changed_execution, &execution_permit),
+                &authorization,
+                at(2)
+            ),
             Err(DeliveryAuthorizationError::PermitMismatch)
         );
 
@@ -178,12 +408,22 @@ mod tests {
             revocations: &[],
         };
         assert_eq!(
-            permit.validate_for(&artifact, &wrong_principal, at(2)),
+            permit.validate_for(
+                &artifact,
+                &delivery_evidence(&variant, &span, &execution, &execution_permit),
+                &wrong_principal,
+                at(2)
+            ),
             Err(DeliveryAuthorizationError::AuthorizationDenied)
         );
 
         assert_eq!(
-            permit.validate_for(&artifact, &authorization, at(4)),
+            permit.validate_for(
+                &artifact,
+                &delivery_evidence(&variant, &span, &execution, &execution_permit),
+                &authorization,
+                at(4)
+            ),
             Err(DeliveryAuthorizationError::AuthorizationDenied)
         );
 
@@ -202,7 +442,12 @@ mod tests {
             revocations: &revocations,
         };
         assert_eq!(
-            permit.validate_for(&artifact, &revoked_authorization, at(3)),
+            permit.validate_for(
+                &artifact,
+                &delivery_evidence(&variant, &span, &execution, &execution_permit),
+                &revoked_authorization,
+                at(3)
+            ),
             Err(DeliveryAuthorizationError::AuthorizationDenied)
         );
     }
@@ -211,6 +456,10 @@ mod tests {
     fn delivery_preflight_rejects_wrong_scope_expired_and_revoked_grants() {
         let grant_id = Uuid::from_u128(54);
         let artifact = artifact(grant_id);
+        let execution = execution();
+        let variant = variant(&execution);
+        let span = source_span();
+        let execution_permit = execution_permit(&execution, &variant);
         let wrong_scope_grants = [grant(
             grant_id,
             ConsentScope::ProcessRemote,
@@ -222,7 +471,12 @@ mod tests {
             revocations: &[],
         };
         assert_eq!(
-            authorize_delivery_at(&artifact, &wrong_scope, at(2)),
+            authorize_delivery_at(
+                &artifact,
+                &delivery_evidence(&variant, &span, &execution, &execution_permit),
+                &wrong_scope,
+                at(2)
+            ),
             Err(DeliveryAuthorizationError::AuthorizationDenied)
         );
 
@@ -233,7 +487,12 @@ mod tests {
             revocations: &[],
         };
         assert_eq!(
-            authorize_delivery_at(&artifact, &expired, at(4)),
+            authorize_delivery_at(
+                &artifact,
+                &delivery_evidence(&variant, &span, &execution, &execution_permit),
+                &expired,
+                at(4)
+            ),
             Err(DeliveryAuthorizationError::AuthorizationDenied)
         );
 
@@ -252,7 +511,12 @@ mod tests {
             revocations: &revocations,
         };
         assert_eq!(
-            authorize_delivery_at(&artifact, &revoked, at(3)),
+            authorize_delivery_at(
+                &artifact,
+                &delivery_evidence(&variant, &span, &execution, &execution_permit),
+                &revoked,
+                at(3)
+            ),
             Err(DeliveryAuthorizationError::AuthorizationDenied)
         );
     }
@@ -261,6 +525,10 @@ mod tests {
     fn delivery_preflight_requires_the_authorized_state_and_artifact_subject() {
         let grant_id = Uuid::from_u128(56);
         let mut artifact = artifact(grant_id);
+        let execution = execution();
+        let variant = variant(&execution);
+        let span = source_span();
+        let execution_permit = execution_permit(&execution, &variant);
         let grants = [grant(grant_id, ConsentScope::Deliver, Uuid::from_u128(999))];
         let authorization = AuthorizationContext {
             principal_id: "authenticated-owner",
@@ -268,14 +536,117 @@ mod tests {
             revocations: &[],
         };
         assert_eq!(
-            authorize_delivery_at(&artifact, &authorization, at(2)),
+            authorize_delivery_at(
+                &artifact,
+                &delivery_evidence(&variant, &span, &execution, &execution_permit),
+                &authorization,
+                at(2)
+            ),
             Err(DeliveryAuthorizationError::AuthorizationDenied)
         );
 
         artifact.status = DeliveryStatus::Prepared;
         assert_eq!(
-            authorize_delivery_at(&artifact, &authorization, at(2)),
+            authorize_delivery_at(
+                &artifact,
+                &delivery_evidence(&variant, &span, &execution, &execution_permit),
+                &authorization,
+                at(2)
+            ),
             Err(DeliveryAuthorizationError::ArtifactNotAuthorized)
+        );
+    }
+
+    #[test]
+    fn delivery_preflight_requires_exact_final_variant_and_successful_execution() {
+        let grant_id = Uuid::from_u128(62);
+        let artifact = artifact(grant_id);
+        let execution = execution();
+        let mut variant = variant(&execution);
+        let span = source_span();
+        let execution_permit = execution_permit(&execution, &variant);
+        let grants = [grant(grant_id, ConsentScope::Deliver, artifact.record_id)];
+        let authorization = AuthorizationContext {
+            principal_id: "authenticated-owner",
+            grants: &grants,
+            revocations: &[],
+        };
+
+        let mut wrong_reference = artifact.clone();
+        wrong_reference.variant_id = Uuid::from_u128(999);
+        assert_eq!(
+            authorize_delivery_at(
+                &wrong_reference,
+                &delivery_evidence(&variant, &span, &execution, &execution_permit),
+                &authorization,
+                at(2)
+            ),
+            Err(DeliveryAuthorizationError::VariantReferenceMismatch)
+        );
+
+        variant.status = VariantStatus::Provisional;
+        assert_eq!(
+            authorize_delivery_at(
+                &artifact,
+                &delivery_evidence(&variant, &span, &execution, &execution_permit),
+                &authorization,
+                at(2)
+            ),
+            Err(DeliveryAuthorizationError::VariantNotFinal)
+        );
+
+        variant.status = VariantStatus::Final;
+        variant.engine_execution_id = Some(Uuid::from_u128(999));
+        assert_eq!(
+            authorize_delivery_at(
+                &artifact,
+                &delivery_evidence(&variant, &span, &execution, &execution_permit),
+                &authorization,
+                at(2)
+            ),
+            Err(DeliveryAuthorizationError::InvalidTranslationEvidence)
+        );
+
+        variant.engine_execution_id = Some(execution.record_id);
+        variant.target_language = "fr".parse().unwrap();
+        assert_eq!(
+            authorize_delivery_at(
+                &artifact,
+                &delivery_evidence(&variant, &span, &execution, &execution_permit),
+                &authorization,
+                at(2)
+            ),
+            Err(DeliveryAuthorizationError::InvalidTranslationEvidence)
+        );
+
+        variant.target_language = "en".parse().unwrap();
+        let mut wrong_language_span = span.clone();
+        wrong_language_span.source_language = Some("fr".parse().unwrap());
+        assert_eq!(
+            authorize_delivery_at(
+                &artifact,
+                &delivery_evidence(
+                    &variant,
+                    &wrong_language_span,
+                    &execution,
+                    &execution_permit
+                ),
+                &authorization,
+                at(2)
+            ),
+            Err(DeliveryAuthorizationError::InvalidTranslationEvidence)
+        );
+
+        let mut wrong_span_id = span.clone();
+        wrong_span_id.record_id = Uuid::from_u128(999);
+        assert_eq!(
+            authorize_delivery_at(
+                &artifact,
+                &delivery_evidence(&variant, &wrong_span_id, &execution, &execution_permit),
+                &authorization,
+                at(2)
+            ),
+            Err(DeliveryAuthorizationError::InvalidTranslationEvidence)
         );
     }
 }
