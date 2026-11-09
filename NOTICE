@@ -12,17 +12,99 @@ Related independent project:
   Selected future engine dependency; not vendored in this repository.
   It has its own license scope, notices, dependencies and release boundaries.
 
-Sources analyzed as external implementation references (not copied/included):
-- RTranslator, https://github.com/niedev/RTranslator
-  Apache License 2.0; copyright and NOTICE as stated in its original repository.
-- Haas-ASR, https://github.com/third-intelligence/Haas-ASR
-  Apache License 2.0; model weights / datasets / components require individual review.
-- speech.cpp, https://github.com/nyosegawa/speech.cpp
-  MIT License; downstream model assets have their own terms.
+Selected Android external platform foundation (no code copied/included yet):
+- RTranslator 3.0, https://github.com/niedev/RTranslator/tree/ae96b008e31323ba8b75f94e8b5d4c29b8c1307e
+  Commit: ae96b008e31323ba8b75f94e8b5d4c29b8c1307e (`v3.00` branch; inspected app version 3.0.0-beta2).
+  Apache License 2.0; retain its LICENSE/NOTICE and applicable per-file notices if code is imported.
+  Selected responsibilities: Android audio/service lifecycle, conversation UI, Bluetooth boundary, system TTS, permissions, generic resource management.
+  Excluded: its translation engines, translation models and weights. Dependencies, model assets, datasets and UI assets require separate review.
 
-NO THIRD-PARTY SOFTWARE, MODEL WEIGHTS OR DATASETS WERE IMPORTED BY
-THE REPOSITORY INITIALIZATION. These listings document inspiration
-and attribution, not permission to relicense or claim ownership.
+Sources analyzed as external implementation references (not copied/included):
+- Haas-ASR, https://github.com/third-intelligence/Haas-ASR
+  Reference commit: acc614f68769dcbfae9dba96b48439c4a66295af.
+  README identifies the code and Haas-ja-v1.0 model weights as Apache-2.0; datasets and dependencies retain separate terms.
+- speech.cpp, https://github.com/nyosegawa/speech.cpp
+  Reference commit: 03555100287c118b41d1b475044e5ab1e07baa8c.
+  Source is MIT; individual ASR/TTS/VAD/diarization models have separate licenses and use restrictions.
+
+NO THIRD-PARTY SOURCE CODE, APPLICATION BINARIES, MODEL WEIGHTS OR DATASETS
+HAVE BEEN COPIED OR VENDORED INTO THE CURRENT KONJAC CHECKOUT. External
+platform selection does not mean code has been integrated. These notices
+document provenance and the selected scope, not permission to relicense or
+claim ownership.
+
+Development/test-only Python distributions pinned in `requirements-dev.lock`
+(installed outside the checkout and not shipped as application code):
+
+| Distribution | Version | Declared license |
+|---|---:|---|
+| annotated-types | 0.8.0 | MIT |
+| attrs | 26.1.0 | MIT |
+| jsonschema | 4.26.0 | MIT |
+| jsonschema-path | 0.5.0 | Apache-2.0 |
+| jsonschema-specifications | 2025.9.1 | MIT |
+| lazy-object-proxy | 1.13.0 | BSD-2-Clause |
+| openapi-schema-validator | 0.9.0 | BSD-3-Clause |
+| openapi-spec-validator | 0.9.0 | Apache-2.0 |
+| pathable | 0.6.0 | Apache-2.0 |
+| pydantic | 2.14.3 | MIT |
+| pydantic-settings | 2.16.2 | MIT |
+| pydantic_core | 2.50.4 | MIT |
+| python-dotenv | 1.2.4 | BSD-3-Clause |
+| PyYAML | 6.0.3 | MIT |
+| referencing | 0.37.0 | MIT |
+| rfc3339-validator | 0.1.4 | MIT |
+| rpds-py | 2026.9.1 | MIT |
+| six | 1.17.0 | MIT |
+| typing-inspection | 0.4.5 | MIT |
+| typing_extensions | 4.16.0 | PSF-2.0 |
+
+License metadata was checked for every pinned distribution on 2026-11-09.
+Their source and license texts remain in their respective distributions; if
+any are bundled or redistributed later, collect their applicable notices.
+
+Rust crates pinned in `Cargo.lock` (the common core's direct dependencies and
+locked transitive dependencies). Declared SPDX expressions were read from the
+locked registry package manifests on 2026-11-09; target-specific WebAssembly
+packages are in the lockfile but are not built for the current Linux target.
+
+| Crate | Version | Declared license |
+|---|---:|---|
+| autocfg | 1.5.1 | Apache-2.0 OR MIT |
+| bumpalo | 3.20.3 | MIT OR Apache-2.0 |
+| cfg-if | 1.0.5 | MIT OR Apache-2.0 |
+| chrono | 0.4.45 | MIT OR Apache-2.0 |
+| futures-core | 0.3.34 | MIT OR Apache-2.0 |
+| futures-task | 0.3.34 | MIT OR Apache-2.0 |
+| futures-util | 0.3.34 | MIT OR Apache-2.0 |
+| itoa | 1.0.19 | MIT OR Apache-2.0 |
+| js-sys | 0.3.107 | MIT OR Apache-2.0 |
+| memchr | 2.8.3 | Unlicense OR MIT |
+| num-traits | 0.2.19 | MIT OR Apache-2.0 |
+| pin-project-lite | 0.2.17 | Apache-2.0 OR MIT |
+| proc-macro2 | 1.0.107 | MIT OR Apache-2.0 |
+| quote | 1.0.47 | MIT OR Apache-2.0 |
+| rustversion | 1.0.23 | MIT OR Apache-2.0 |
+| serde | 1.0.229 | MIT OR Apache-2.0 |
+| serde_core | 1.0.229 | MIT OR Apache-2.0 |
+| serde_derive | 1.0.229 | MIT OR Apache-2.0 |
+| serde_json | 1.0.154 | MIT OR Apache-2.0 |
+| slab | 0.4.12 | MIT |
+| syn | 3.0.10 | MIT OR Apache-2.0 |
+| thiserror | 2.0.21 | MIT OR Apache-2.0 |
+| thiserror-impl | 2.0.21 | MIT OR Apache-2.0 |
+| unicode-ident | 1.0.27 | (MIT OR Apache-2.0) AND Unicode-3.0 |
+| uuid | 1.29.2 | Apache-2.0 OR MIT |
+| wasm-bindgen | 0.2.130 | MIT OR Apache-2.0 |
+| wasm-bindgen-macro | 0.2.130 | MIT OR Apache-2.0 |
+| wasm-bindgen-macro-support | 0.2.130 | MIT OR Apache-2.0 |
+| wasm-bindgen-shared | 0.2.130 | MIT OR Apache-2.0 |
+| zmij | 1.0.23 | MIT |
+
+No dependency source code, binaries, or model assets are copied into the
+repository. Cargo.lock pins package checksums. Any binary redistribution must
+retain applicable licenses and notices, with Unicode-3.0 attribution reviewed
+in the release package.
 
 When third-party files or assets are later included, add their exact
 source commits, file paths, copyright, licenses, original notices,

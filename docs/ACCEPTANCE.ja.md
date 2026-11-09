@@ -1,7 +1,7 @@
 # こんにゃく翻訳 — 機能・製品受入規定
 
 - 初版：2026-11-04
-- 現状：**実装なし・実行試験なし**。以下は将来の受入条件である。
+- 改訂：2026-11-09。Rust共通論理コア、JSON Schema／OpenAPI検査11件、Python能力ゲート検査4件、Rust境界検査19件を実装。製品ランタイムと全経路は未実装。
 - 判定語：`PASS`＝条件・証拠が成立、`FAIL`＝不成立、`NOT RUN`＝未実施、`BLOCKED`＝事前依存が不成立、`SUSPEND`＝仕様上判断を停止。単純な「テストがある」を実証としない。
 
 ## 1. 構造に関する必須検査
@@ -56,5 +56,71 @@
 
 各検査ケースに最低限、対象版・コミット・入力ファイル/テストデータ識別・OS/CPU/GPU・モデル版・テスト時刻・実行手順・結果・ログ場所・期待値・観測値・未確認点を記録する。
 
-**現行判定：A01〜A07、U01〜U12、品質・性能・安全の製品受入はすべて `NOT RUN`。** 文書として仕様が作られたことと実装が成立したことは区別する。
+## 6. 受入ID別の段階状態
+
+各IDを「仕様定義・実装・結線・QC・環境別QA・Owner最終受入」に分ける。`PASS` はその列の記載範囲だけを指す。契約テストのPASSを製品機能のPASSへ昇格しない。
+
+| ID | 仕様定義 | 実装 | 結線 | QC | QA | Owner最終受入 |
+|---|---|---|---|---|---|---|
+| A01 | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| A02 | PASS | NOT RUN | BLOCKED | NOT RUN | NOT RUN | NOT RUN |
+| A03 | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| A04 | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| A05 | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| A06 | PASS | NOT RUN | BLOCKED | NOT RUN | NOT RUN | NOT RUN |
+| A07 | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| U01 | PASS | NOT RUN | BLOCKED | NOT RUN | NOT RUN | NOT RUN |
+| U02 | PASS | NOT RUN | BLOCKED | NOT RUN | NOT RUN | NOT RUN |
+| U03 | PASS | NOT RUN | BLOCKED | NOT RUN | NOT RUN | NOT RUN |
+| U04 | PASS | NOT RUN | BLOCKED | NOT RUN | NOT RUN | NOT RUN |
+| U05 | PASS | NOT RUN | BLOCKED | NOT RUN | NOT RUN | NOT RUN |
+| U06 | PASS | NOT RUN | BLOCKED | NOT RUN | NOT RUN | NOT RUN |
+| U07 | PASS | NOT RUN | BLOCKED | NOT RUN | NOT RUN | NOT RUN |
+| U08 | PASS | NOT RUN | BLOCKED | NOT RUN | NOT RUN | NOT RUN |
+| U09 | PASS | NOT RUN | BLOCKED | NOT RUN | NOT RUN | NOT RUN |
+| U10 | PASS | NOT RUN | BLOCKED | NOT RUN | NOT RUN | NOT RUN |
+| U11 | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| U12 | PASS | NOT RUN | BLOCKED | NOT RUN | NOT RUN | NOT RUN |
+
+`A02` と実訳に依存する `A06`／`U01`〜`U12` の結線状態は、凍結 `MINIDORA-BETA 0.6.0b1` の公開翻訳契約を確認できないため `BLOCKED`。この判定は外側の基盤施工を阻止しない。
+
+2026-11-09に [共通契約スキーマ](../contracts/konjac-v1.schema.json)のDraft 2020-12適合、11レコード種の例、明示的遠隔同意、確定訳のエンジン証跡、未対応結果の無訳文、外部配送許可、未知フィールド拒否、[OpenAPI](../contracts/openapi-v1.json)の3.1適合と参照解決、およびMINIDORA版能力プロファイルの閉鎖動作を検査し13件PASSした。これはA05/A06の契約形状QCと依存ゲートQCだけを部分確認するもので、上表の全体実装・結線・QC・QA・最終受入状態は変えない。
+
+製品アプリと全体経路がない現時点での総合状態は **製品受入 `NOT RUN`**、MINIDORA実訳接続は **`BLOCKED`**。RTranslatorを含む対象別QA、品質・性能・安全検収、Ownerによる独立検収は未実施。
+
+2026-11-09に同一作業ツリーでPython 3.12の15件（JSON Schema/OpenAPI形状、版付きTranslationRequest必須項目、unsupported結果の無訳文条件、監査済み能力ゲート）とRust 1.99.1の19件（論理record、言語タグ、同意範囲/期限/撤回、版付き能力ゲート、言語ペア/文脈/モード別許可、アクティブセッションとsession/request/input revision、SourceAsset/Span/実行/全訳先結果参照、拒否時の実行前停止、event順序、配送不変条件）を実行し、全件PASS。Rust `cargo fmt --all -- --check` と `cargo clippy --workspace --all-targets --locked -- -D warnings` もPASS。いずれも局所的な契約QCであり、製品経路、同意の永続運用、MINIDORA呼出し、A/U全体受入は検証していない。
+
+## 7. E01–E06 環境受入
+
+環境の存在・仕様定義と、その環境での製品適合を分ける。実機確認はQAと独立して記録し、未確認個体を全端末保証へ拡張しない。
+
+| ID | 対象 | 要求定義 | 実装 | 結線 | QC | 環境別QA | 実機確認 | Owner受入 |
+|---|---|---|---|---|---|---|---|---|
+| E01 | Windows | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT CONFIRMED | NOT RUN |
+| E02 | Linux | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT CONFIRMED | NOT RUN |
+| E03 | macOS | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT CONFIRMED | NOT RUN |
+| E04 | Android | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT CONFIRMED | NOT RUN |
+| E05 | iOS | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT CONFIRMED | NOT RUN |
+| E06 | Web | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT CONFIRMED | NOT RUN |
+
+## 8. U01–U12 × E01–E06 適用範囲
+
+`IN`＝その環境に同一利用行為を提供する。`COND`＝OS権限、取得API、対応ブラウザ、アプリ接続、媒体権利に依存し、利用可能経路だけを提供する。表は施工範囲であって実装・適合PASSではない。条件を満たさない場合も行を削除せず、根拠付きで不支持を示す。
+
+| U | E01 Windows | E02 Linux | E03 macOS | E04 Android | E05 iOS | E06 Web |
+|---|---|---|---|---|---|---|
+| U01 テキスト翻訳 | IN | IN | IN | IN | IN | IN |
+| U02 双方向会話 | COND: 音声権限 | COND: 音声サーバー | COND: 音声権限 | COND: マイク/Bluetooth | COND: マイク/Bluetooth | COND: ブラウザ音声権限 |
+| U03 録音・音声ファイル | COND: 入力/保存権限 | COND: 音声形式 | COND: 入力/保存権限 | COND: ファイル/背景 | COND: ファイル/背景 | COND: ファイル/メモリ上限 |
+| U04 デスクトップ音声字幕 | COND: OS音声API | COND: PipeWire等 | COND: OS音声API | COND: OS提供入力のみ | COND: OS提供入力のみ | COND: ブラウザが許可する音声のみ |
+| U05 会議・通話 | COND: 接続先/同意 | COND: 接続先/同意 | COND: 接続先/同意 | COND: アプリ/通話制約 | COND: アプリ/通話制約 | COND: ブラウザ/接続先/同意 |
+| U06 動画・配信 | COND: 権利/DRM/API | COND: 権利/DRM/API | COND: 権利/DRM/API | COND: 権利/OS/API | COND: 権利/OS/API | COND: 権利/ブラウザ/DRM |
+| U07 Webページ翻訳 | COND: 許可済み拡張等 | COND: 許可済み拡張等 | COND: 許可済み拡張等 | COND: 共有/WebView | COND: 共有/WebView | COND: DOM/サイト権限 |
+| U08 文書翻訳 | COND: ファイル権限 | COND: ファイル権限 | COND: ファイル権限 | COND: ファイル/容量 | COND: ファイル/容量 | COND: ファイル/容量 |
+| U09 画像・カメラ・OCR | COND: カメラ/画面権限 | COND: カメラ/画面権限 | COND: カメラ/画面権限 | COND: カメラ/共有権限 | COND: カメラ/共有権限 | COND: ブラウザ許可 |
+| U10 チャット・メール | COND: 承認済み接続 | COND: 承認済み接続 | COND: 承認済み接続 | COND: 承認済み接続 | COND: 承認済み接続 | COND: 承認済み接続 |
+| U11 媒体・端末間継続 | IN | IN | IN | IN | IN | IN |
+| U12 API・SDK・連携 | COND: 認証/接続 | COND: 認証/接続 | COND: 認証/接続 | COND: アプリ/API | COND: アプリ/API | COND: 認証/ブラウザ |
+
+全72セルの実装、結線、QC、QA、Owner受入は未実施。U04のモバイル経路はOSが明示的に提供する入力だけが対象で、OS制限の回避を要求しない。ブラウザAPIやホストアプリの実可用性は個別条件として検査する。
 

@@ -1,0 +1,274 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Konjac Translation API",
+    "version": "1.0.0",
+    "description": "Transport contract for platform clients. A documented operation is not evidence that a service or engine capability is implemented. Translation must stop explicitly when the selected engine reports unsupported or unverified."
+  },
+  "servers": [{"url": "/v1"}],
+  "security": [{"bearerAuth": []}],
+  "tags": [
+    {"name": "Capabilities"},
+    {"name": "Sessions"},
+    {"name": "Sources"},
+    {"name": "Translation"},
+    {"name": "Delivery"}
+  ],
+  "paths": {
+    "/capabilities": {
+      "get": {
+        "tags": ["Capabilities"],
+        "operationId": "getCapabilities",
+        "summary": "Read audited engine and adapter capabilities",
+        "responses": {
+          "200": {
+            "description": "Current capability evidence, including UNVERIFIED and UNSUPPORTED states.",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CapabilityReport"}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Capabilities"],
+        "operationId": "getHealth",
+        "summary": "Read non-sensitive service liveness",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service is reachable.",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Health"}}}
+          }
+        }
+      }
+    },
+    "/sessions": {
+      "post": {
+        "tags": ["Sessions"],
+        "operationId": "createSession",
+        "summary": "Create a translation session",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/TranslationSession"}}}},
+        "responses": {
+          "201": {"description": "Session created.", "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/TranslationSession"}}}},
+          "400": {"$ref": "#/components/responses/InvalidRecord"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "429": {"$ref": "#/components/responses/RateLimited"}
+        }
+      }
+    },
+    "/consents": {
+      "post": {
+        "tags": ["Sessions"],
+        "operationId": "grantConsent",
+        "summary": "Record an explicit, scoped consent grant",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/ConsentGrant"}}}},
+        "responses": {"201": {"description": "Consent grant recorded.", "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/ConsentGrant"}}}}, "400": {"$ref": "#/components/responses/InvalidRecord"}, "401": {"$ref": "#/components/responses/Unauthorized"}}
+      }
+    },
+    "/consents/{consentId}/revocations": {
+      "parameters": [{"$ref": "#/components/parameters/ConsentId"}],
+      "post": {
+        "tags": ["Sessions"],
+        "operationId": "revokeConsent",
+        "summary": "Append a revocation record for a prior consent grant",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/ConsentRevocation"}}}},
+        "responses": {"201": {"description": "Revocation record appended.", "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/ConsentRevocation"}}}}, "400": {"$ref": "#/components/responses/InvalidRecord"}, "401": {"$ref": "#/components/responses/Unauthorized"}, "404": {"$ref": "#/components/responses/NotFound"}}
+      }
+    },
+    "/sessions/{sessionId}": {
+      "parameters": [{"$ref": "#/components/parameters/SessionId"}],
+      "get": {
+        "tags": ["Sessions"],
+        "operationId": "getSession",
+        "summary": "Read the caller-authorized session revision",
+        "responses": {"200": {"description": "Session found.", "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/TranslationSession"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "404": {"$ref": "#/components/responses/NotFound"}}
+      },
+      "put": {
+        "tags": ["Sessions"],
+        "operationId": "reviseSession",
+        "summary": "Append a newer session settings revision",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/TranslationSession"}}}},
+        "responses": {"200": {"description": "New session revision saved.", "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/TranslationSession"}}}}, "400": {"$ref": "#/components/responses/InvalidRecord"}, "401": {"$ref": "#/components/responses/Unauthorized"}, "409": {"description": "The submitted revision conflicts with current state.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiError"}}}}}
+      },
+      "delete": {
+        "tags": ["Sessions"],
+        "operationId": "closeSession",
+        "summary": "Close a session and apply its retention policy",
+        "responses": {"204": {"description": "Closure and requested deletion completed."}, "401": {"$ref": "#/components/responses/Unauthorized"}, "404": {"$ref": "#/components/responses/NotFound"}}
+      }
+    },
+    "/source-assets": {
+      "post": {
+        "tags": ["Sources"],
+        "operationId": "registerSourceAsset",
+        "summary": "Register an authorized source asset or opaque content reference",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/SourceAsset"}}}},
+        "responses": {"201": {"description": "Source registered.", "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/SourceAsset"}}}}, "400": {"$ref": "#/components/responses/InvalidRecord"}, "401": {"$ref": "#/components/responses/Unauthorized"}, "429": {"$ref": "#/components/responses/RateLimited"}}
+      }
+    },
+    "/source-assets/{assetId}": {
+      "parameters": [{"$ref": "#/components/parameters/AssetId"}],
+      "delete": {
+        "tags": ["Sources"],
+        "operationId": "deleteSourceAsset",
+        "summary": "Delete source content according to the asset retention policy",
+        "responses": {"204": {"description": "Content deletion completed or asset was already expired."}, "401": {"$ref": "#/components/responses/Unauthorized"}, "404": {"$ref": "#/components/responses/NotFound"}}
+      }
+    },
+    "/source-assets/{assetId}/content": {
+      "parameters": [{"$ref": "#/components/parameters/AssetId"}],
+      "put": {
+        "tags": ["Sources"],
+        "operationId": "uploadSourceContent",
+        "summary": "Upload bytes for a pre-registered asset under its consent and retention policy",
+        "requestBody": {"required": true, "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary"}}}},
+        "responses": {"201": {"description": "Content stored and integrity digest recorded.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ContentReceipt"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"description": "Required storage or processing consent is absent or out of scope.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiError"}}}}, "413": {"description": "Upload exceeds the configured service limit.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiError"}}}}}
+      }
+    },
+    "/source-spans": {
+      "post": {
+        "tags": ["Sources"],
+        "operationId": "registerSourceSpan",
+        "summary": "Register an extracted, transcribed, or user-entered source span with provenance",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/SourceSpan"}}}},
+        "responses": {"201": {"description": "Source span registered.", "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/SourceSpan"}}}}, "400": {"$ref": "#/components/responses/InvalidRecord"}, "401": {"$ref": "#/components/responses/Unauthorized"}, "429": {"$ref": "#/components/responses/RateLimited"}}
+      }
+    },
+    "/translation-requests": {
+      "post": {
+        "tags": ["Translation"],
+        "operationId": "submitTranslationRequest",
+        "summary": "Submit one versioned translation request",
+        "description": "An unsupported or unverified engine route must return a typed non-success TranslationResult and must not create TranslationVariant text or deliver output.",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/TranslationRequest"}}}},
+        "responses": {
+          "202": {"description": "Accepted for processing; the result may remain pending.", "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/TranslationResult"}}}},
+          "422": {"description": "The requested capability is unsupported or suspended. No translated text is returned.", "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/TranslationResult"}}}},
+          "400": {"$ref": "#/components/responses/InvalidRecord"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "409": {"description": "Idempotency key conflicts with a different request body or revision.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiError"}}}},
+          "429": {"$ref": "#/components/responses/RateLimited"}
+        }
+      }
+    },
+    "/translation-requests/{requestId}": {
+      "parameters": [{"$ref": "#/components/parameters/RequestId"}],
+      "get": {
+        "tags": ["Translation"],
+        "operationId": "getTranslationResult",
+        "summary": "Read an authorized request result",
+        "responses": {"200": {"description": "Current result state.", "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/TranslationResult"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "404": {"$ref": "#/components/responses/NotFound"}}
+      }
+    },
+    "/translation-requests/{requestId}/cancel": {
+      "parameters": [{"$ref": "#/components/parameters/RequestId"}],
+      "post": {
+        "tags": ["Translation"],
+        "operationId": "cancelTranslationRequest",
+        "summary": "Request cancellation and return the observed current state",
+        "description": "Acknowledging cancellation is not proof that an engine or external effect stopped. Preserve CANCELLED, TIMED_OUT, and DELIVERY_UNKNOWN as distinct outcomes.",
+        "responses": {"200": {"description": "Observed request state.", "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/TranslationResult"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "404": {"$ref": "#/components/responses/NotFound"}}
+      }
+    },
+    "/translation-requests/{requestId}/events": {
+      "parameters": [
+        {"$ref": "#/components/parameters/RequestId"},
+        {"name": "afterSequence", "in": "query", "required": false, "schema": {"type": "integer", "minimum": 0}}
+      ],
+      "get": {
+        "tags": ["Translation"],
+        "operationId": "streamTranslationEvents",
+        "summary": "Read ordered events using SSE or durable polling",
+        "responses": {
+          "200": {
+            "description": "Events have monotonically increasing sequence values. Polling with afterSequence is the recovery path after disconnect.",
+            "content": {
+              "text/event-stream": {"schema": {"type": "string"}},
+              "application/json": {"schema": {"$ref": "#/components/schemas/TranslationEventPage"}}
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/deliveries": {
+      "post": {
+        "tags": ["Delivery"],
+        "operationId": "deliverArtifact",
+        "summary": "Deliver an artifact under a separate explicit permission",
+        "description": "Never send chat, email, files, or external messages implicitly as a consequence of translation or display.",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/DeliveryArtifact"}}}},
+        "responses": {"202": {"description": "Authorized delivery queued.", "content": {"application/json": {"schema": {"$ref": "./konjac-v1.schema.json#/$defs/DeliveryArtifact"}}}}, "400": {"$ref": "#/components/responses/InvalidRecord"}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"description": "Delivery permission is absent, expired, revoked, or out of scope.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiError"}}}}, "429": {"$ref": "#/components/responses/RateLimited"}}
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {"bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "opaque"}},
+    "parameters": {
+      "SessionId": {"name": "sessionId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+      "RequestId": {"name": "requestId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+      "ConsentId": {"name": "consentId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+      "AssetId": {"name": "assetId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}
+    },
+    "responses": {
+      "Unauthorized": {"description": "Authentication is missing or invalid.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiError"}}}},
+      "NotFound": {"description": "No caller-authorized resource exists for this identifier.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiError"}}}},
+      "InvalidRecord": {"description": "The request record violates the versioned contract.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiError"}}}},
+      "RateLimited": {"description": "Retry only after the server-provided Retry-After interval.", "headers": {"Retry-After": {"schema": {"type": "integer", "minimum": 1}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiError"}}}}
+    },
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "properties": {"code": {"type": "string"}, "message": {"type": "string"}, "request_id": {"type": "string", "format": "uuid"}},
+        "required": ["code", "message"],
+        "additionalProperties": false
+      },
+      "Health": {
+        "type": "object",
+        "properties": {"status": {"const": "ok"}},
+        "required": ["status"],
+        "additionalProperties": false
+      },
+      "ContentReceipt": {
+        "type": "object",
+        "properties": {
+          "asset_id": {"type": "string", "format": "uuid"},
+          "content_ref": {"$ref": "./konjac-v1.schema.json#/$defs/reference"},
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "size_bytes": {"type": "integer", "minimum": 0},
+          "stored_at": {"type": "string", "format": "date-time"}
+        },
+        "required": ["asset_id", "content_ref", "sha256", "size_bytes", "stored_at"],
+        "additionalProperties": false
+      },
+      "CapabilityReport": {
+        "type": "object",
+        "properties": {
+          "observed_at": {"type": "string", "format": "date-time"},
+          "engine_name": {"type": "string"},
+          "engine_version": {"type": ["string", "null"]},
+          "engine_revision": {"type": ["string", "null"]},
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {"capability_id": {"type": "string"}, "state": {"enum": ["SUPPORTED", "UNSUPPORTED", "UNVERIFIED"]}, "reason_code": {"type": "string"}},
+              "required": ["capability_id", "state", "reason_code"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["observed_at", "engine_name", "engine_version", "engine_revision", "capabilities"],
+        "additionalProperties": false
+      },
+      "TranslationEventPage": {
+        "type": "object",
+        "properties": {"events": {"type": "array", "items": {"$ref": "./konjac-v1.schema.json#/$defs/TranslationEvent"}}, "next_sequence": {"type": ["integer", "null"], "minimum": 1}},
+        "required": ["events", "next_sequence"],
+        "additionalProperties": false
+      }
+    }
+  }
+}

@@ -7,7 +7,7 @@ Konjac Translation (project name: `konjacTranslation`, nickname: **こんにゃ�
 
 This is a **translation product**, not a generic AI-agent platform, and not merely a phone interpreter, speech-to-text tool, or subtitle generator.
 
-> **Status — Design baseline, 2026-11-04.** This repository currently contains specifications and project governance only. There is **no runnable Konjac application**, no released beta, and no demonstrated end-to-end translation capability here. Intended functionality is not implemented functionality.
+> **Status — 2026-11-09.** A Rust logical-contract core, consent evaluator, and fail-closed MINIDORA `EnginePort` boundary are implemented and unit-tested. The engine runtime adapter, UI, service, persistence, media adapters, and end-to-end routes are **not implemented**. No end-to-end translation capability is demonstrated.
 
 ## One translation experience, many sources and destinations
 
@@ -32,13 +32,29 @@ Konjac's translation execution engine is [**MINIDORA-BETA**](https://github.com/
 
 See [Architecture](docs/ARCHITECTURE.ja.md) and [Engine integration contract](docs/ENGINE_INTEGRATION.ja.md).
 
-## Reference projects (study before reuse)
+The current owner-provided product specification, whole-system construction plan, and Codex order are preserved under [`docs/implementation-baseline/`](docs/implementation-baseline/README.ja.md). They define all six target environments and the G0–G8 construction sequence; the repository status and implementation evidence are tracked separately.
 
-- [RTranslator](https://github.com/niedev/RTranslator): Android voice lifecycle, on-device conversation UI, Bluetooth exchange, TTS, model/resource management.
+## External platform foundation and references
+
+- [RTranslator 3.0](https://github.com/niedev/RTranslator/tree/ae96b008e31323ba8b75f94e8b5d4c29b8c1307e): selected as the Android external platform foundation for audio/service lifecycle, conversation UI, Bluetooth, system TTS, permissions, and generic resource management. No source is imported yet; its translation engine and translation models are excluded. See [adoption boundary](docs/SOURCE_REVIEW.ja.md).
 - [Haas-ASR](https://github.com/third-intelligence/Haas-ASR): Japanese speech recognition and demonstration patterns for chunking, provisional/final captions, timing.
 - [speech.cpp](https://github.com/nyosegawa/speech.cpp): typed native speech API and transcription/synthesis/server boundaries.
 
-These are **reference implementations**, not integrated dependencies. Source reuse requires license, attribution, platform, privacy and regression review. [Source analysis](docs/SOURCE_REVIEW.ja.md).
+Haas-ASR and speech.cpp remain analysis references. RTranslator source integration is not complete. [Source analysis](docs/SOURCE_REVIEW.ja.md).
+
+## Shared wire contract
+
+The logical record and state contract is documented in [`contracts/LOGICAL_MODEL.ja.md`](contracts/LOGICAL_MODEL.ja.md) and implemented in [`crates/konjac-core`](crates/konjac-core). [`contracts/konjac-v1.schema.json`](contracts/konjac-v1.schema.json) and [`contracts/openapi-v1.json`](contracts/openapi-v1.json) are current JSON projections; they do not yet fully represent the logical contract. The Rust `EnginePort` is an interface and capability gate, not a MINIDORA runtime adapter. Python remains the audited-version diagnostic and JSON/OpenAPI QC tool. Run the focused checks with:
+
+```sh
+python -m pip install -r requirements-dev.lock
+python -m unittest discover -s tests -v
+cargo test --workspace --locked
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+```
+
+The 15 Python tests validate JSON/OpenAPI projections and the audited capability profile; the 19 Rust tests validate logical records, consent scope, ordered events, active session/input references, output coverage, and fail-closed execution gating bound to language pair, context requirement, and batch/streaming mode. They also verify unsupported capability evidence stops before engine invocation. These do not establish service behavior, durable consent, engine invocation, target OS support, or end-to-end translation. MINIDORA-BETA `0.6.0b1` does not expose a confirmed translation operation. Rust 1.99.1 is pinned for the common core; Tauri 2 remains a comparison candidate.
 
 ## Project navigation
 
@@ -53,6 +69,7 @@ These are **reference implementations**, not integrated dependencies. Source reu
 | [Acceptance criteria](docs/ACCEPTANCE.ja.md) | Measurable product, security and quality evidence |
 | [Decision log](docs/DECISIONS.md) | Dated, auditable design decisions |
 | [Agent instructions](AGENTS.md), [Contributing](CONTRIBUTING.md), [Security](SECURITY.md) | Development and governance |
+| [Cloud development setup (JA)](docs/CLOUD_ENVIRONMENT_SETUP.ja.md) | Reproducible current Rust/Python checks and configuration status |
 | [LICENSE](LICENSE), [NOTICE](NOTICE), [CHANGELOG](CHANGELOG.md) | Attribution, licensing, history |
 
 **Repository policy:** Software is Apache-2.0; original explanatory documentation is CC BY 4.0, subject to file-level exceptions and third-party rights. See [LICENSE](LICENSE). Attribution: **がっちむち♂ / gatchimuchio**.

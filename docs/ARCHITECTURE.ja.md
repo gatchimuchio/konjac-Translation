@@ -2,7 +2,7 @@
 
 - 制定：2026-11-04
 - 対象：**翻訳製品の外側**。MINIDORA自身の再設計書ではない。
-- 状態：提案仕様／未実装。実装時は実際の公開APIと照合する。
+- 状態：現行正本は[Owner提供の三点セット](implementation-baseline/README.ja.md)。共通論理レコード・同意評価・閉鎖EnginePort境界のRust初期実装、JSON Schema/OpenAPI射影、Python能力検査器は存在する。MINIDORA実行アダプター、媒体アダプター、サービス、UI、永続化、全線結線は未実装。
 
 ## 1. 全体構造
 
@@ -23,11 +23,11 @@ flowchart TB
 
 | パッケージ候補 | 所有する責務 | 所有しない責務 |
 |---|---|---|
-| `apps/desktop` | Windows常駐、UI、OS権限連携、音声／画面選択、出力表示 | 翻訳の意味判定 |
+| `apps/desktop` | Windows/Linux/macOSのUI、OS権限連携、音声／画面選択、出力表示 | 翻訳の意味判定 |
 | `apps/web` | 翻訳Web UI、ブラウザ許可、表示・編集・共有 | ブラウザ権限外の録音／OS強制介入 |
 | `apps/mobile` | Android/iOS UI、会話・撮影・共有、権限処理 | 端末制約の迂回 |
 | `services/gateway` | セッション、ジョブ受理、認証、制限、配送、明示された遠隔処理 | 任意の自動実行権限 |
-| `packages/contracts` | 言語・話者・時刻・版を含む共通データ型・スキーマ | 自律的採否 |
+| `crates/konjac-core` / `contracts` | 言語・話者・時刻・版を含む論理データ型、状態・能力・同意契約と交換射影 | 自律的採否 |
 | `packages/source-adapters` | Mic/system audio/file/camera/web/meeting/host appからの受理 | 他者の通信の無許可取得 |
 | `packages/perception` | VAD、ASR、OCR、抽出、話者区別、分割、時間・領域座標 | 言語の意味を独自に翻訳 |
 | `packages/translation-bridge` | MINIDORA-BETA公開I/Oに形式変換、能力照会、エラー伝搬、版固定 | 内側アルゴリズム、隠れた代替LLM |
@@ -35,7 +35,7 @@ flowchart TB
 | `packages/sessions` | セッションごとの言語設定、同意、作業状態、元データへの参照 | 中核の学習状態の複製 |
 | `packages/provenance` | 原文／訳文の対応、変更履歴、監査、テスト証拠 | 個人情報の無制限保持 |
 
-パッケージ名は契約上の**候補**であり、空のディレクトリを大量作成して「実装完了」としない。言語やランタイムは **OS連携／処理特性／保守性／実測**で選び、単一言語に固定する原理はない。
+パッケージ名は責務配置案であり、空のディレクトリを大量作成して「実装完了」としない。Owner提供の現行選定ではRustを共通処理基盤の第一候補、Tauri 2をUI比較基準とする。Tauri 2の各OS音声・画面取得、配布、性能への適合は未検証であり、UI採用は未確定。
 
 ## 3. 入口の共通化
 
@@ -104,9 +104,14 @@ flowchart LR
 ## 6. 技術選定と実機前提
 
 - **Windows優先**：デスクトップ、オーディオ装置・仮想音声、スクリーン、Web連携の受入を実機で確かめる。WSL/Linuxだけの成功は代用不可。
-- **クロスプラットフォーム**：ブラウザ/Android/iOS/サーバーは同じ契約を利用するが、それぞれのOS・API・配信元権限に従う。
+- **クロスプラットフォーム**：Windows/Linux/macOS/Android/iOS/Webの全6環境を対象とする。論理契約は共通だが、それぞれのOS・API・配信元権限に従う。
 - **ローカルとリモート**：通信先、保存先、依存するモデル／サーバー／ネットワークを実際の処理前に表示できるようにする。自動クラウド流出は禁止。
-- **入出力ツール**：RTranslator、Haas-ASR、speech.cppのモジュール境界を参考にするが、実装への採用は独立した実験・ライセンス監査後に確定。
+- **Android外部基盤**：RTranslator 3.0 の `v3.00` ブランチ `ae96b008e31323ba8b75f94e8b5d4c29b8c1307e` を採用方針の基準とする。サービス／音声／会話UI／Bluetooth／システムTTS／権限／汎用資源管理を責務単位で移植対象とする。ソース、モデル、依存はまだ取り込んでいない。RTranslatorの翻訳器と翻訳モデルはMINIDORAの駆動境界から除外する。詳細は[参照ソフトウェア解析](SOURCE_REVIEW.ja.md)。
+- **他プラットフォーム**：RTranslatorのAndroid実装をWindows/Web/iOSへ流用扱いしない。共通の[ワイヤ契約](../contracts/konjac-v1.schema.json)に接続するOS固有アダプターを別途施工する。
+- **論理契約と射影**：論理レコード・状態・責務を製品正本とし、JSON Schema/OpenAPI/Protobuf/ABI等は必要に応じて生成・維持する交換形式の射影とする。現行JSON Schema/OpenAPIは実装済みの候補射影で、論理モデルの全同一性・全状態をまだ表現しきっていない。詳細は[論理契約](../contracts/LOGICAL_MODEL.ja.md)。
+- **Rust共通基盤**：Owner提供の現行仕様に従いRustを施工第一候補とする。共通処理・状態機械・EnginePort・資源制御に適用し、OS固有I/Oはアダプター境界に置く。Rustの選定はAICompilerによる将来互換の証明ではなく、ビルド・ターゲット・依存・性能・配布適合の検証を要する。
+- **UI候補**：Tauri 2をWindows/Linux/macOSのデスクトップと共有UI候補の比較基準とする。E01-E06の音声、画面、ファイル、権限、署名、配布、WASM適合を未検証のまま採用確定しない。Web、Android、iOSに必要なTypeScript/Kotlin/Swift等は同一論理契約の境界付き射影とする。
+- **限定したPython選定**：Python `>=3.11` はMINIDORA公開ファサードの能力検査CLIと契約QCに限る。Pythonを製品共通ランタイムへ拡張しない。JSON Schema/OpenAPI検証器はテスト用である。
 
 ## 7. 未解決（最初の実装で検証）
 
@@ -117,4 +122,10 @@ flowchart LR
 5. モデル配布、ライセンス、端末容量、キャッシュ・権限・秘密管理。
 
 未解決事項は仕様から消すのではなく、[工程](DELIVERY_PLAN.ja.md)の検証ゲートへ渡す。
+
+## 8. 現在の共通コア実装範囲
+
+`crates/konjac-core`には7中核record、ConsentGrant/ConsentRevocation、TranslationResult/TranslationEventの型、基本不変条件、明示的同意評価、アクティブsession/request/input版とSourceAsset/Spanの参照検査、訳先出力の全数参照検査を実装した。EnginePortの能力許可は原言語・訳先・文脈要否・batch/streamingと版付き証拠を束縛する。Rust内の`contract_version`は論理契約版であり、JSON Schemaの`schema_version`と同じ物として扱わない。
+
+このcrateには翻訳モデル・意味判断ロジック・MINIDORA呼出し実装はない。許可評価は渡された同意記録に対する純関数であり、永続台帳、OS権限、認証、実際のデータ消去を代替しない。event batch検査は読み込んだpageの整合を確認するが、DBのsequence採番/追記を保証しない。Rust単体テストは構造/境界の一部を確認するだけで、W01/W02/W03全体の実装、結線、QCをPASSにしない。論理型からJSON/OpenAPIへの完全射影も未施工。
 

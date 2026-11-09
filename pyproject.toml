@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "konjac-translation-contracts"
+version = "0.1.0"
+description = "Platform-neutral translation contracts and audited engine capability profiles"
+requires-python = ">=3.11"
+license = { file = "LICENSE-APACHE-2.0" }
+authors = [{ name = "がっちむち♂" }]
+dependencies = []
+
+[project.optional-dependencies]
+test = ["jsonschema==4.26.0", "openapi-spec-validator==0.9.0"]
+
+[project.scripts]
+konjac-engine-capabilities = "konjac_translation.engine_profile:main"
+
+[tool.setuptools.package-data]
+konjac_translation = ["data/*.json"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,315 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://konjac-translation.invalid/contracts/konjac-v1.schema.json",
+  "title": "Konjac Translation wire records",
+  "description": "Language-neutral public wire contract. It does not define translation semantics or assert MINIDORA capability.",
+  "oneOf": [
+    {"$ref": "#/$defs/SourceAsset"},
+    {"$ref": "#/$defs/TranslationSession"},
+    {"$ref": "#/$defs/ConsentGrant"},
+    {"$ref": "#/$defs/ConsentRevocation"},
+    {"$ref": "#/$defs/SourceSpan"},
+    {"$ref": "#/$defs/TranslationRequest"},
+    {"$ref": "#/$defs/EngineExecution"},
+    {"$ref": "#/$defs/TranslationVariant"},
+    {"$ref": "#/$defs/TranslationResult"},
+    {"$ref": "#/$defs/DeliveryArtifact"},
+    {"$ref": "#/$defs/TranslationEvent"}
+  ],
+  "$defs": {
+    "id": {"type": "string", "format": "uuid"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "languageTag": {"type": "string", "minLength": 2, "maxLength": 63, "pattern": "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$"},
+    "reference": {
+      "type": "object",
+      "properties": {
+        "kind": {"enum": ["local", "remote"]},
+        "key": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "media_type": {"type": "string", "minLength": 1, "maxLength": 127},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 0}
+      },
+      "required": ["kind", "key"],
+      "additionalProperties": false
+    },
+    "base": {
+      "type": "object",
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "record_id": {"$ref": "#/$defs/id"},
+        "record_type": {"type": "string"},
+        "created_at": {"$ref": "#/$defs/timestamp"}
+      },
+      "required": ["schema_version", "record_id", "record_type", "created_at"]
+    },
+    "consentScope": {"enum": ["capture", "process_local", "process_remote", "store", "deliver", "share"]},
+    "ConsentGrant": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "properties": {
+            "record_type": {"const": "ConsentGrant"},
+            "principal_id": {"type": "string", "minLength": 1, "maxLength": 256},
+            "scope": {"$ref": "#/$defs/consentScope"},
+            "subject_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+            "granted_at": {"$ref": "#/$defs/timestamp"},
+            "expires_at": {"$ref": "#/$defs/timestamp"},
+            "evidence_ref": {"$ref": "#/$defs/reference"}
+          },
+          "required": ["principal_id", "scope", "subject_ids", "granted_at"]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ConsentRevocation": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "properties": {
+            "record_type": {"const": "ConsentRevocation"},
+            "grant_id": {"$ref": "#/$defs/id"},
+            "revoked_by": {"type": "string", "minLength": 1, "maxLength": 256},
+            "revoked_at": {"$ref": "#/$defs/timestamp"},
+            "reason_code": {"type": "string", "minLength": 1, "maxLength": 128}
+          },
+          "required": ["grant_id", "revoked_by", "revoked_at", "reason_code"]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "SourceAsset": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "properties": {
+            "record_type": {"const": "SourceAsset"},
+            "media_kind": {"enum": ["text", "audio", "image", "video", "document", "web", "chat", "meeting", "api"]},
+            "origin": {"enum": ["user_input", "file_picker", "camera", "microphone", "system_audio", "browser_selection", "approved_connector", "api_client"]},
+            "media_type": {"type": "string", "minLength": 1, "maxLength": 127},
+            "content_ref": {"$ref": "#/$defs/reference"},
+            "content_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+            "source_uri": {"type": "string", "format": "uri", "maxLength": 4096},
+            "attribution": {"type": "string", "maxLength": 2048},
+            "capture_consent_id": {"$ref": "#/$defs/id"},
+            "retention": {"enum": ["ephemeral", "session", "user_managed"]},
+            "metadata": {"type": "object", "additionalProperties": {"type": ["string", "number", "integer", "boolean", "null"]}}
+          },
+          "required": ["media_kind", "origin", "media_type", "retention"]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "participant": {
+      "type": "object",
+      "properties": {
+        "participant_id": {"$ref": "#/$defs/id"},
+        "role": {"enum": ["owner", "speaker", "listener", "service"]},
+        "preferred_language": {"$ref": "#/$defs/languageTag"},
+        "consent_grant_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true}
+      },
+      "required": ["participant_id", "role", "consent_grant_ids"],
+      "additionalProperties": false
+    },
+    "TranslationSession": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "properties": {
+            "record_type": {"const": "TranslationSession"},
+            "revision": {"type": "integer", "minimum": 1},
+            "status": {"enum": ["active", "paused", "closed"]},
+            "source_language": {"oneOf": [{"$ref": "#/$defs/languageTag"}, {"const": "und"}]},
+            "target_languages": {"type": "array", "items": {"$ref": "#/$defs/languageTag"}, "minItems": 1, "uniqueItems": true},
+            "participants": {"type": "array", "items": {"$ref": "#/$defs/participant"}, "minItems": 1},
+            "context_refs": {"type": "array", "items": {"$ref": "#/$defs/reference"}},
+            "terminology_refs": {"type": "array", "items": {"$ref": "#/$defs/reference"}},
+            "processing_location": {"enum": ["local_only", "remote_with_consent"]},
+            "consent_grant_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+            "retention": {"enum": ["ephemeral", "session", "user_managed"]}
+          },
+          "required": ["revision", "status", "source_language", "target_languages", "participants", "context_refs", "terminology_refs", "processing_location", "consent_grant_ids", "retention"]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "start_ms": {"type": "integer", "minimum": 0},
+        "end_ms": {"type": "integer", "minimum": 0},
+        "document_anchor": {"type": "string", "maxLength": 1024},
+        "page": {"type": "integer", "minimum": 1},
+        "bounding_box": {"type": "array", "items": {"type": "number", "minimum": 0, "maximum": 1}, "minItems": 4, "maxItems": 4}
+      },
+      "additionalProperties": false,
+      "anyOf": [
+        {"required": ["start_ms", "end_ms"]},
+        {"required": ["document_anchor"]},
+        {"required": ["page", "bounding_box"]}
+      ]
+    },
+    "SourceSpan": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "properties": {
+            "record_type": {"const": "SourceSpan"},
+            "asset_id": {"$ref": "#/$defs/id"},
+            "session_id": {"$ref": "#/$defs/id"},
+            "revision": {"type": "integer", "minimum": 1},
+            "source_text": {"type": "string", "minLength": 1, "description": "Sensitive source content. Process only under recorded consent and retention; never copy into logs or diagnostic traces."},
+            "source_language": {"oneOf": [{"$ref": "#/$defs/languageTag"}, {"const": "und"}]},
+            "observation_origin": {"enum": ["typed", "asr", "ocr", "document_parser", "web_extractor", "connector"]},
+            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+            "speaker_id": {"$ref": "#/$defs/id"},
+            "position": {"$ref": "#/$defs/position"},
+            "provenance_ref": {"$ref": "#/$defs/reference"}
+          },
+          "required": ["asset_id", "session_id", "revision", "source_text", "source_language", "observation_origin"]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "TranslationRequest": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "properties": {
+            "record_type": {"const": "TranslationRequest"},
+            "session_id": {"$ref": "#/$defs/id"},
+            "session_revision": {"type": "integer", "minimum": 1},
+            "revision": {"type": "integer", "minimum": 1},
+            "source_span_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "minItems": 1, "uniqueItems": true},
+            "input_revision": {"type": "integer", "minimum": 1},
+            "target_languages": {"type": "array", "items": {"$ref": "#/$defs/languageTag"}, "minItems": 1, "uniqueItems": true},
+            "context_refs": {"type": "array", "items": {"$ref": "#/$defs/reference"}},
+            "terminology_refs": {"type": "array", "items": {"$ref": "#/$defs/reference"}},
+            "requested_outputs": {"type": "array", "items": {"enum": ["text", "subtitle", "audio", "document", "overlay", "api"]}, "minItems": 1, "uniqueItems": true},
+            "execution_mode": {"enum": ["batch", "streaming"]},
+            "processing_location": {"enum": ["local_only", "remote_with_consent"]},
+            "processing_consent_id": {"$ref": "#/$defs/id"},
+            "idempotency_key": {"type": "string", "minLength": 16, "maxLength": 256},
+            "attempt": {"type": "integer", "minimum": 1},
+            "deadline": {"$ref": "#/$defs/timestamp"},
+            "cancel_requested_at": {"$ref": "#/$defs/timestamp"}
+          },
+          "required": ["session_id", "session_revision", "revision", "source_span_ids", "input_revision", "target_languages", "context_refs", "terminology_refs", "requested_outputs", "execution_mode", "processing_location", "idempotency_key", "attempt"]
+        },
+        {"if": {"properties": {"processing_location": {"const": "remote_with_consent"}}, "required": ["processing_location"]}, "then": {"required": ["processing_consent_id"]}}
+      ],
+      "unevaluatedProperties": false
+    },
+    "EngineExecution": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "properties": {
+            "record_type": {"const": "EngineExecution"},
+            "request_id": {"$ref": "#/$defs/id"},
+            "engine_name": {"type": "string", "minLength": 1, "maxLength": 128},
+            "engine_version": {"type": "string", "minLength": 1, "maxLength": 128},
+            "engine_revision": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+            "public_entry_point": {"type": "string", "minLength": 1, "maxLength": 256},
+            "capability_id": {"type": "string", "minLength": 1, "maxLength": 128},
+            "outcome": {"enum": ["COMPLETED", "UNSUPPORTED", "SUSPEND", "FAILED", "CANCELLED", "TIMED_OUT"]},
+            "started_at": {"$ref": "#/$defs/timestamp"},
+            "finished_at": {"$ref": "#/$defs/timestamp"},
+            "diagnostic_code": {"type": "string", "maxLength": 128},
+            "trace_ref": {"$ref": "#/$defs/reference"}
+          },
+          "required": ["request_id", "engine_name", "engine_version", "engine_revision", "public_entry_point", "capability_id", "outcome", "started_at"]
+        },
+        {"if": {"properties": {"outcome": {"enum": ["COMPLETED", "UNSUPPORTED", "SUSPEND", "FAILED", "CANCELLED", "TIMED_OUT"]}}, "required": ["outcome"]}, "then": {"required": ["finished_at"]}}
+      ],
+      "unevaluatedProperties": false
+    },
+    "TranslationVariant": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "properties": {
+            "record_type": {"const": "TranslationVariant"},
+            "request_id": {"$ref": "#/$defs/id"},
+            "source_span_id": {"$ref": "#/$defs/id"},
+            "target_language": {"$ref": "#/$defs/languageTag"},
+            "revision": {"type": "integer", "minimum": 1},
+            "status": {"enum": ["PROVISIONAL", "FINAL", "UNSUPPORTED", "SUSPEND", "FAILED", "CANCELLED", "TIMED_OUT"]},
+            "text": {"type": ["string", "null"], "minLength": 1},
+            "engine_execution_id": {"$ref": "#/$defs/id"},
+            "provenance_ref": {"$ref": "#/$defs/reference"},
+            "speaker_id": {"$ref": "#/$defs/id"},
+            "position": {"$ref": "#/$defs/position"},
+            "produced_at": {"$ref": "#/$defs/timestamp"}
+          },
+          "required": ["request_id", "source_span_id", "target_language", "revision", "status", "text", "produced_at"]
+        },
+        {"if": {"properties": {"status": {"enum": ["PROVISIONAL", "FINAL"]}}, "required": ["status"]}, "then": {"required": ["engine_execution_id"], "properties": {"text": {"type": "string", "minLength": 1}}}},
+        {"if": {"properties": {"status": {"enum": ["UNSUPPORTED", "SUSPEND", "FAILED", "CANCELLED", "TIMED_OUT"]}}, "required": ["status"]}, "then": {"properties": {"text": {"const": null}}}}
+      ],
+      "unevaluatedProperties": false
+    },
+    "TranslationResult": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "properties": {
+            "record_type": {"const": "TranslationResult"},
+            "request_id": {"$ref": "#/$defs/id"},
+            "request_revision": {"type": "integer", "minimum": 1},
+            "status": {"enum": ["PENDING", "PROCESSING", "COMPLETED", "PARTIAL", "UNSUPPORTED", "SUSPEND", "FAILED", "CANCELLED", "TIMED_OUT"]},
+            "variant_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+            "engine_execution_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+            "failure_code": {"type": "string", "maxLength": 128},
+            "completed_at": {"$ref": "#/$defs/timestamp"}
+          },
+          "required": ["request_id", "request_revision", "status", "variant_ids", "engine_execution_ids"]
+        },
+        {"if": {"properties": {"status": {"enum": ["COMPLETED", "PARTIAL"]}}, "required": ["status"]}, "then": {"required": ["completed_at"], "properties": {"variant_ids": {"minItems": 1}, "engine_execution_ids": {"minItems": 1}}}},
+        {"if": {"properties": {"status": {"enum": ["UNSUPPORTED", "SUSPEND"]}}, "required": ["status"]}, "then": {"required": ["completed_at", "failure_code"], "properties": {"variant_ids": {"maxItems": 0}}}},
+        {"if": {"properties": {"status": {"enum": ["FAILED", "CANCELLED", "TIMED_OUT"]}}, "required": ["status"]}, "then": {"required": ["completed_at"], "properties": {"variant_ids": {"maxItems": 0}}}}
+      ],
+      "unevaluatedProperties": false
+    },
+    "DeliveryArtifact": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "properties": {
+            "record_type": {"const": "DeliveryArtifact"},
+            "request_id": {"$ref": "#/$defs/id"},
+            "variant_id": {"$ref": "#/$defs/id"},
+            "format": {"enum": ["text", "srt", "vtt", "audio", "document", "overlay", "api"]},
+            "destination": {"type": "string", "minLength": 1, "maxLength": 1024},
+            "payload_ref": {"$ref": "#/$defs/reference"},
+            "status": {"enum": ["READY", "DELIVERING", "DELIVERED", "DELIVERY_UNKNOWN", "FAILED", "CANCELLED"]},
+            "delivery_consent_id": {"$ref": "#/$defs/id"},
+            "delivered_at": {"$ref": "#/$defs/timestamp"},
+            "diagnostic_code": {"type": "string", "maxLength": 128}
+          },
+          "required": ["request_id", "variant_id", "format", "destination", "payload_ref", "status"]
+        },
+        {"if": {"properties": {"status": {"const": "DELIVERED"}}, "required": ["status"]}, "then": {"required": ["delivery_consent_id", "delivered_at"]}},
+        {"if": {"properties": {"status": {"const": "DELIVERY_UNKNOWN"}}, "required": ["status"]}, "then": {"required": ["delivery_consent_id"]}}
+      ],
+      "unevaluatedProperties": false
+    },
+    "TranslationEvent": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "properties": {
+            "record_type": {"const": "TranslationEvent"},
+            "request_id": {"$ref": "#/$defs/id"},
+            "sequence": {"type": "integer", "minimum": 1},
+            "event_type": {"enum": ["accepted", "processing", "variant_updated", "completed", "unsupported", "suspended", "failed", "cancelled", "timed_out", "delivery_updated"]},
+            "variant_id": {"$ref": "#/$defs/id"},
+            "result_id": {"$ref": "#/$defs/id"},
+            "occurred_at": {"$ref": "#/$defs/timestamp"}
+          },
+          "required": ["request_id", "sequence", "event_type", "occurred_at"]
+        }
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

@@ -1,77 +1,88 @@
-# MINIDORA-BETA 接続・データ契約（設計提案）
+# MINIDORA-BETA 接続・データ契約
 
-制定：2026-11-04。**この契約案はKonjac実装側の設計であり、MINIDORA-BETAに既存翻訳APIが存在するという主張ではない。**
+- 更新：2026-11-09
+- 対象：MINIDORA Engine Beta 1 `0.6.0b1`
+- 状態：公開APIを監査し、Rust論理契約・JSON/OpenAPI射影・能力ゲート境界を実装。MINIDORA実訳接続は **BLOCKED**。
 
-## 1. 駆動と責任の不変条件
+この契約はこんにゃく翻訳が所有する入出力・来歴・権限の境界を定める。MINIDORA内部の意味処理、学習、判断、採否を再定義しない。
 
-- 依存先：[MINIDORA-BETA](https://github.com/gatchimuchio/MINIDORA-BETA)、Engine Beta 1 `0.6.0b1`。実装・実際のAPI・公開境界は同リポの `README.md`、`AGENTS.md`、`PUBLICATION_BOUNDARY.md`、`REPOSITORY_LOCK.md` に従う。
-- ミニドラは **入力機 → 本体 → 出力機**を維持。外部からの翻訳処理は公開エントリポイントに限定する。
-- **Konjacは翻訳専用アプリケーション。** 経路の発見、権限、型変換、ASR/OCR、文脈・話者・時間軸の引継ぎ、結果レンダリングを担う。
-- 言語の意味判断、MINIDORAの最終採否、学習・駆動状態の正本をKonjac側で新設しない。
-- `0.6.0b1`の公開サンプルは制御された入力→作用→出力の接続試験。**任意言語ペアの自由翻訳、ストリーミング翻訳、TTS、OCR、ASRの成立証拠ではない。**
+## 1. 監査した依存の正本
 
-## 2. Konjac側で定義する契約案
+2026-11-09にGitHubから read-only clone した `gatchimuchio/MINIDORA-BETA` のHEADは `1c546e77007afa0a9eeb3a44f07da99d84c383eb`。`0.6.0b1` の凍結配布基準は `RELEASE_MANIFEST.json` の `fe5822de63644bdaea9208a98046f71684dffae2` と、元上流 `gatchimuchio/NOTNN-LLM-MINIDORA@9307d7e2b1799750ecef1957d85128fcbe403d02`。GitHub現行HEADには後続の文書更新があるが、βの実行ソースは変更されていない。
 
-次は**新規実装予定**のKonjac外部境界。実装後にスキーマ、型、版、負例テストを固定する。
-
-| 型／識別子 | 必須内容と意義 |
+| 確認項目 | 観測した事実 |
 |---|---|
-| `SourceAsset` | 入力元種別（text/audio/image/video/document/web/chat）、ソースID、所有/許可範囲、参照/整合性情報。生データをむやみに複製しない |
-| `TranslationSession` | `session_id`、利用者の言語設定、参加者/話者、同意・権限・処理場所、文脈参照、セッションの版 |
-| `SourceSpan` | `span_id`、原文と対象範囲、`start/end`時刻・元ドキュメント位置、話者、元媒体への対応、ASR/OCR由来の不確実性 |
-| `TranslationRequest` | `request_id`、`input_version`、元言語候補、訳先言語**集合**、原文への参照、用語・文脈、求める出力形式、期限・停止/キャンセル条件 |
-| `EngineExecution` | 使用したMINIDORAの厳密な版、公開エントリポイント、要求と応答のトレース参照、能力判定、終端・エラー・不支持の状態 |
-| `TranslationVariant` | `target_language`、訳文本体、対応`span_id`、`result_version`、エンジン根拠、確定可否、ユーザー修正履歴 |
-| `DeliveryArtifact` | subtitle/audio/translated-document/web-overlay/screen-text/apiの出力形式、成果物ID、タイムコード/配置、送信先、配送許可、監査参照 |
+| 配布名・版 | `minidora-notnn==0.6.0b1`、Python `>=3.11` |
+| 依存 | `SudachiPy==0.6.11`、`SudachiDict-core==20260723` |
+| 外部ファサード | `minidora.engine_beta.ミニドラβ実行機` |
+| 公開操作 | `実行(...)`、同一インスタンス内の `結果を参照(...)` |
+| 一般入力 | テキスト本文。`案件ID`、`入力ID`、入力版等を受け取る |
+| 例の実行方式 | 呼出側から作用を注入する制御配線例。指定した作用の出力を返す |
+| 実訳能力 | 公開API・配布記録から言語ペア翻訳の契約を確認できない |
+| ストリーミング | 翻訳イベント／暫定訳／確定訳の公開契約を確認できない |
+| 永続性 | 例の重複抑止は同一ファサードインスタンス内。再起動を越える保証はない |
+| 配信 | `実行()` は外部送信を行わない |
 
-**型の位置づけ**：これらは「入力・出力・権限・履歴の包装」であり、隠れた意味モデルや第二のMINIDORAではない。
+固定βのAPI・公開境界・配布ルールを変更しない。2026-11-09時点の公開HEAD `1c546e77007afa0a9eeb3a44f07da99d84c383eb` で `docs/redesign/README`、`01_SYSTEM_SPECIFICATION`、`05_VERIFICATION_AND_EVIDENCE`、`07_R1_AUDIT_CLOSURE` も照合した。R2文書は後継設計・検証計画であり、実装／公開経路の受入が保留であることを区別している。R2用の設計記述や検証項目は独立した実訳API・実行証拠ではなく、凍結βの能力を拡張しない。また同資料はPython・SQLite・JSONを論理構成の必須選択とはしていないため、Konjacの全体技術選定根拠として扱わない。R2の詳細理論はここへ転記しない。
 
-## 3. 接続ポート案
+## 2. 統合状態と停止動作
+
+`0.6.0b1`には、確認できた公開契約として `translate(text, from, to)` 相当の操作がなく、言語ペア・文脈継続・翻訳キャンセル・翻訳ストリーミングも契約されていない。制御例は固定の入力→作用→出力を確認するもので、実訳能力の試験ではない。固定βと公開資料を監査した結論は、こんにゃく翻訳の実訳経路を接続できる証拠がまだないということ。
+
+したがって対象要求は `UNSUPPORTED`、`SUSPEND` または原因に応じた `FAILED` として記録し、訳文を生成・配信しない。ASR/OCR/TTS、RTranslator内の翻訳モデル、外部翻訳APIをMINIDORAの代替成功として隠して呼ばない。任意言語ペア翻訳は `BLOCKED` の受入項目として保持する。新しいMINIDORA公開APIや版が必要なため、凍結βを改変せず独立変更要求 [MCR-001](MINIDORA_CHANGE_REQUEST.ja.md) を記録した。未提出であり、後継版・承認・実装証拠はない。
+
+## 3. 実装済みの共通ワイヤ契約
+
+論理契約の正本は[`contracts/LOGICAL_MODEL.ja.md`](../contracts/LOGICAL_MODEL.ja.md)、初期Rust型は[`crates/konjac-core`](../crates/konjac-core)に置く。[`contracts/konjac-v1.schema.json`](../contracts/konjac-v1.schema.json)はJSON交換射影で、Draft 2020-12を製品論理の正本にはしない。全項目の射影同値は未施工。Python能力ゲートは [`src/konjac_translation/engine_profile.py`](../src/konjac_translation/engine_profile.py) と監査済み版プロファイルを読み、未監査版を `UNVERIFIED` とする。Rust `EnginePort`は原言語・訳先・文脈要否・batch/streamingを指定する型付き照会と、厳密なエンジン版・commit・公開入口の証拠が一致したときだけ閉鎖型実行許可を作る。`execute_guarded`は入力・セッション検査、全照会の事前判定を経てから単一エンジンを呼び、拒否・未知が一つでもあれば呼出しを止める。返却後は許可集合、実行証拠、各訳先出力の対応を検査する。これはMINIDORA実行アダプターではなく、翻訳実行も行わない。
+
+`schema_version` は現在 `1.0.0`。型と責務は次のとおり。
+
+| レコード | 責務 |
+|---|---|
+| `SourceAsset` | 原媒体の種別、取得経路、参照、媒体型、保持方針 |
+| `TranslationSession` | 入出力言語、参加者、共有文脈・用語、処理場所、保持方針 |
+| `ConsentGrant` / `ConsentRevocation` | 主体・対象・操作範囲・明示許可、および履歴を残す独立した撤回記録 |
+| `SourceSpan` | 原文、言語候補、話者、観測方法、時刻／文書位置、来歴 |
+| `TranslationRequest` | session/request/input各版、訳先集合、文脈、出力形式、実行モード、重複キー、試行・期限・停止 |
+| `EngineExecution` | 厳密なエンジン版・commit・公開入口・能力ID・実行結果・診断参照 |
+| `TranslationVariant` | 元区間に結び付く、言語別・版付き結果または明示的失敗 |
+| `TranslationResult` | 要求全体の終端、結果一覧、エンジン証跡、失敗理由 |
+| `DeliveryArtifact` | 成果物、宛先、明示許可、配送結果と不確実状態 |
+| `TranslationEvent` | 要求単位で単調増加するイベント番号と状態通知 |
+
+HTTP境界は [`contracts/openapi-v1.json`](../contracts/openapi-v1.json) に定義し、イベントはSSEと順序付き再取得を規定する。スキーマは秘密値を記録しない。媒体内容は原則として参照で結び、監査記録へ本文や音声を複製しない。言語タグはBCP 47形式。`local_only` と `remote_with_consent` を分け、遠隔処理は許可IDなしでは要求として成立しない。
+
+成功状態の訳文にはエンジン実行IDが必要。`UNSUPPORTED`／`SUSPEND`／`FAILED` 等の訳文欄は `null` とし、`COMPLETED` は少なくとも一つの訳結果とエンジン実行証跡を要求する。外部配信は別記録で、`DELIVERED` は配信許可と完了時刻、`DELIVERY_UNKNOWN` は許可と状態不確実性を残す。
+
+JSON Schemaで強制するのはレコード形状と局所条件まで。ID参照の存在、許可の対象一致・期限・撤回、時刻の前後関係、同一要求の排他・冪等性、イベント順序、永続化、再起動後の復旧、実際の配信停止はランタイム実装と全体QCで別途保証しなければならない。現状これらのランタイムは未実装。
+
+## 4. 入力から出力への正規境界
 
 ```text
-KonjacInputPort: source -> (authorized) SourceAsset + SourceSpan[]
-PerceptionPort: media -> source-aligned observations (VAD / ASR / OCR / extraction)
-TranslationBridge: TranslationRequest -> MINIDORA public input/core/output -> EngineExecution
-DeliveryPort: EngineExecution + TranslationVariant[] -> authorized DeliveryArtifact[]
+許可済み媒体入力
+  → SourceAsset / SourceSpan（抽出・ASR・OCR・位置／話者／時刻）
+  → TranslationSession / TranslationRequest
+  → MINIDORA公開入力機 → 本体 → 出力機
+  → EngineExecution / TranslationVariant / TranslationResult
+  → 許可を確認した DeliveryArtifact
 ```
 
-- `TranslationBridge` はBetaの実在する`ミニドラβ実行機`等の公開機能を呼ぶ前に、能力・引数・出力を**現在のコードで確認**する。Konjac向け `translate(text, from, to)` をMINIDORAに実装済みであるかのように表示してはいけない。
-- 能力が欠ける、訳文が確定しない、言語ペアが不支持、内部採否が未成立の場合は `UNSUPPORTED` / `SUSPEND` / `FAILED` 等の**外部状態**として露出する。内部`PASS/SUSPEND/FAIL`等の用語と写像する際は定義を照合。
-- 既存NN翻訳器を本番で秘密裏に代替することは、MINIDORAを駆動とする製品の実証を壊す。比較実験の際は実行主体・モード・結果を明示し隔離する。
+Konjacの前処理は原文を観測・抽出し、非意味の話者・時刻・位置情報を付ける。訳文の意味判断・採否を独自に行わない。出力表示、保存、共有、外部送信は異なる操作で、各々の許可を必要とする。
 
-## 4. ストリーミングと版
+部分更新は要求ID・入力版・区間ID・訳先言語・増加する結果版で相関する。古いイベントで確定結果を巻き戻さない。要求の再試行は入力版と試行を明示し、失敗・キャンセルを黙って成功へ変えない。現状このイベント処理と永続状態機械は未実装。
 
-外部イベントの例（まだ実装されていない）：
+## 5. 確認・受入
 
-```json
-{
-  "schema_version": "draft-0",
-  "session_id": "s-001",
-  "request_id": "r-001",
-  "input_version": 1,
-  "span_id": "u-003",
-  "target_language": "en",
-  "event": "provisional_translation",
-  "revision": 2,
-  "speaker_id": "speaker-a",
-  "source_time_ms": [1200, 2700],
-  "payload": "<candidate text>"
-}
+現行JSON/OpenAPI射影、Python能力ゲート、Rust論理境界を検査するには、リポジトリ直下で実行する。
+
+```sh
+python -m pip install -r requirements-dev.lock
+python -m unittest discover -s tests -v
+cargo test --workspace --locked
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
 ```
 
-- 逐次ASRが`暫定`を更新しても、確定訳は古いイベントで巻き戻さない。`source` の確定・`engine` の採否・`delivery` の表示確定は別段階。
-- 同じ発話を複数言語へ翻訳する場合は、同じ元`span_id`と個別の訳先・版を持つ。
-- 話者変更、時刻ズレ、文書位置ズレ、逆向き会話、結果欠落は明示的に追跡する。
-- エンジン側の重複入力抑止は**同一インスタンス内**など公開された成立範囲だけを前提とし、Konjac側に永続的idempotency／配送記録が必要なら別途実装・試験する。
+Python 15件はJSON Schema/OpenAPI射影、要求版条件、未対応結果の無訳文条件と能力ゲートを検査する。Rust 19件は論理record、不正言語タグ、同意の主体/対象/用途/期限/撤回、厳密版能力ゲート、能力次元と許可集合の完全一致、アクティブsession/request/input各版、SourceAsset/Span／実行／全訳先結果参照、未対応時の実行前停止とevent順序を検査する。両者とも限定した契約QCであり、射影全同値、MINIDORA実行・実訳、サービス統合、対象端末QAの証拠ではない。
 
-## 5. 実装前に必要な成立証拠
-
-1. Beta公開APIに対し、実際の入力・境界・出力と停止条件を監査する。
-2. 元言語・訳先言語・用語・文脈を伴う最小の**実訳**を成功させる。与えられた固定作用の実行と混同しない。
-3. 二言語・複数言語・長文・曖昧表現・固有名詞・同音異義・逆翻訳を固定データで検証。
-4. エラー／タイムアウト／キャンセル／再試行時の`SUSPEND`・失敗・無配送を検証。
-5. Windows実機・Web・Android/iOS等それぞれの入出力境界を個別に確認する。
-6. 新APIをMINIDORA側に要する場合は**Betaを直接改造せず**、独立版の提案と非退行検証を別案件として扱う。
-
-以上を満たすまで「MINIDORA翻訳機能完成」は未検証のまま保持する。
-
+実訳受入をPASSへ上げるには、新たに許可されたMINIDORA版の固定commit、公開API、対象言語ペア、文脈、停止／取消の実測、全件証跡が必要。別エンジンの出力や作用注入例で代替しない。

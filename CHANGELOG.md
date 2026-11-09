@@ -14,3 +14,31 @@
 
 - **No application implementation, CI/test execution, model import, runtime beta, or release has been performed in this initialization.**
 
+## Unreleased — 2026-11-09
+
+### Architecture and implementation contract
+
+- Audited the live MINIDORA-BETA `0.6.0b1` public API and controlled wiring example; retained the real translation path as BLOCKED because no public translation operation or language-pair contract was confirmed.
+- Recorded independent MINIDORA successor request MCR-001 in Konjac; it remains unsubmitted and does not alter the frozen beta.
+- Selected RTranslator 3.0 at `ae96b008e31323ba8b75f94e8b5d4c29b8c1307e` as the Android external platform foundation. No third-party source, models, or assets were imported.
+- Added a Draft 2020-12 cross-platform JSON contract, an OpenAPI 3.1 transport contract, a fail-closed profile for audited MINIDORA versions, and thirteen QC tests for provenance, consent, engine evidence, unsupported outcomes, delivery, API references, and unknown-version handling.
+- Replaced feature-by-feature completion gates with the nine-stage coordinated whole-system construction, wiring, verification, target QA, and Owner acceptance sequence.
+
+### Verification
+
+- Konjac contract/API/profile suite: 13 passed (Python 3.12, JSON Schema and OpenAPI validators).
+- MINIDORA-BETA source at `fe5822de63644bdaea9208a98046f71684dffae2`: isolated build/install succeeded; controlled wiring example succeeded; published scoped regression command ran 313 tests, all passed. Those results do not demonstrate translation capability.
+- No Konjac application, service, persistent store, platform adapter, or end-to-end translation path is implemented.
+
+### Owner-provided construction baseline
+
+- Preserved the uploaded three-point product specification, G0-G8 construction plan, and Codex order verbatim with hashes under `docs/implementation-baseline/`.
+- Expanded the derived acceptance matrix to E01-E06 and all U01-U12 × E01-E06 applicability cells. This is scope coverage, not implementation or QA evidence.
+- Recorded the supplied Rust common-core direction and Tauri 2 comparison candidate. Installed Rust 1.99.1; no Rust product code or cross-target build is complete.
+- Added a logical-model document that distinguishes product contract identity from JSON Schema/OpenAPI projections and lists known projection gaps.
+- Audited the specified Haas-ASR and speech.cpp source commits read-only; no code, weights, datasets, or model assets were imported.
+- Implemented the first Rust common-core slice: typed logical records, validated BCP 47 tags, scoped consent grant/revocation evaluation, and a fail-closed EnginePort contract. No engine adapter or product execution route was added.
+- Added typed TranslationResult/TranslationEvent records, request/result revision binding, full source/target result coverage checks, and ordered event-page validation. Persistence and atomic sequence allocation remain unimplemented.
+- Pinned Rust 1.99.1 and Cargo dependencies; recorded locked crate licenses. Added a closed execution permit bound to the exact language pair, context requirement, and batch/streaming mode, with cross-checks for active session and input revisions, SourceAsset/Span references, engine evidence, and result coverage. Guarded execution stops before invoking the selected engine when any capability is denied or unknown. Current Linux checks pass: Rust 19 unit tests, Python 15 contract/profile tests, formatting, and clippy.
+- Reconciled the active delivery plan, architecture, acceptance and onboarding workflow with the measured implementation state. G2/G3/G4 and whole-system QC/QA remain open.
+

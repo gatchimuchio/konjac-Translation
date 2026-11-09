@@ -10,7 +10,7 @@
 - **話す／聞く**：対面会話、録音、電話・オンライン会議を翻訳し、字幕・テキスト・音声で届ける。
 - **見る**：動画・配信・教材・会議映像を文字起こしし、多言語字幕や翻訳音声で利用する。
 - **書く／伝える**：チャット、投稿、メール、文書を相手の言語へ変換する。
-- **つなぐ**：Windows、Web、スマートフォン、許可された外部アプリ、API/SDKで同じ翻訳体験を使う。
+- **つなぐ**：Windows、Linux、macOS、Android、iOS、Web、許可された外部アプリ、API/SDKで同じ論理契約の翻訳体験を提供する。
 
 ## 体験の原則
 
@@ -26,19 +26,34 @@
 
 **こんにゃく翻訳が実装するのは、その外側**。音声取得／ASR／VAD、OCR、文章抽出、画面や会議の接続、時間軸・話者情報、翻訳成果物の出力、TTS、UI/UX、記録・権限・配信などである。ミニドラの内部能力や意味判断・採否を独自に作り直さない。
 
-RTranslator、Haas-ASR、speech.cpp は外部機構の解析・比較対象であり、現段階で組み込まれてはいない。既存モデルの性能と、こんにゃく翻訳で得られる性能を混同しない。
+RTranslator 3.0 (`ae96b008e31323ba8b75f94e8b5d4c29b8c1307e`) をAndroid外部基盤として選定した。音声・サービスのライフサイクル、会話UI、Bluetooth、システムTTS、権限、汎用資源管理を責務単位で移植対象とし、同プロジェクトの翻訳器・翻訳モデルは除外する。ソースはまだ取り込んでいない。Haas-ASRとspeech.cppは引き続き解析候補である。[採用境界](docs/SOURCE_REVIEW.ja.md)。
 
 ## 現在の状態
 
-※ **2026-11-04時点：設計・リポ初期整備。実行可能なアプリは未実装。** 対応言語・対応OS・翻訳品質・リアルタイム性能は現時点で保証しない。ミニドラβの存在は、任意の多言語翻訳が動作実証されたことを意味しない。
+※ **2026-11-09時点：Rust共通コアに論理レコード、同意評価、閉鎖的なEnginePort境界を実装し、単体検査済み。MINIDORA実行アダプター、翻訳アプリ、HTTPサービス、永続化、媒体/OSアダプターは未実装。** 対応言語・OS・翻訳品質・リアルタイム性能は保証しない。MINIDORA-BETA `0.6.0b1` の公開資料・実装から実訳APIを確認できていない。
 
-今後の実装は、機能ごとの小さな切片に分けて検証する。ただし**製品定義を「スマホの同時翻訳＋文字起こし」に縮退させない**。最終到達範囲は最初から製品仕様に保持する。
+Owner提供の現行施工正本（製品仕様・全体工程・Codex指示）は[`docs/implementation-baseline/`](docs/implementation-baseline/README.ja.md)に原文保存している。Windows/Linux/macOS/Android/iOS/Webの6環境を対象とし、G0–G8の全体工程で追跡する。
+
+全体系の要求・境界・契約を保ち、入力・中核・出力・各環境を結線してから全体経路を検収する。A01〜A07、U01〜U12は施工漏れ防止と受入の索引であり、**製品定義を「スマホの同時翻訳＋文字起こし」に縮退させない**。
+
+Rust `1.99.1`を共通処理基盤に採用し、`crates/konjac-core`に論理契約の第一実装を置いた。19件のRust単体テストと15件のPython射影・能力検査が通る。Rustのセッション検査はSourceAsset/Spanと各版を結び、能力許可は原言語・訳先・文脈要否・batch/streamingの組合せに束縛する。`UNSUPPORTED`証拠が一つでもあればMINIDORA呼出し前に停止する。Tauri 2はデスクトップ／共有UIの比較候補であり採用確定ではない。JSON Schema/OpenAPIは論理契約から導く交換射影で、完全な対応は未検証。
+
+開発環境の確認コマンド：
+
+```sh
+python -m pip install -r requirements-dev.lock
+python -m unittest discover -s tests -v
+cargo test --workspace --locked
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+```
 
 - [製品仕様](docs/PRODUCT_SPEC.ja.md)
 - [構成／モジュール境界](docs/ARCHITECTURE.ja.md)
 - [ミニドラ接続契約](docs/ENGINE_INTEGRATION.ja.md)
 - [既存ソフト解析](docs/SOURCE_REVIEW.ja.md)
 - [工程・受入基準](docs/DELIVERY_PLAN.ja.md)、[受入検証](docs/ACCEPTANCE.ja.md)
+- [クラウド開発環境](docs/CLOUD_ENVIRONMENT_SETUP.ja.md)
 - [開発規律](AGENTS.md)、[寄稿方針](CONTRIBUTING.md)、[ライセンス](LICENSE)、[第三者帰属](NOTICE)
 
 著者：**がっちむち♂（gatchimuchio）**。

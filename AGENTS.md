@@ -4,7 +4,7 @@
 
 Product: **Konjac Translation / こんにゃく翻訳**. Purpose: remove language friction across text, speech, images, documents, webpages, video, subtitles, meetings, calls and integrated application workflows.
 
-Do not reinterpret this repository as a generic MINIDORA AI shell, speech-to-text-only app, phone interpreter-only app, or isolated subtitle tool. The source of truth for product intent is [Product specification](docs/PRODUCT_SPEC.ja.md); implementation boundaries are [Architecture](docs/ARCHITECTURE.ja.md).
+Do not reinterpret this repository as a generic MINIDORA AI shell, speech-to-text-only app, phone interpreter-only app, or isolated subtitle tool. The current owner-provided product and construction baseline is preserved in [01 product specification](docs/implementation-baseline/01_KONJAC_%E7%B5%B1%E5%90%88%E8%A3%BD%E5%93%81%E5%AE%9F%E8%A3%85%E4%BB%95%E6%A7%98%E6%9B%B8_v1_20261109.md), [02 whole-system plan](docs/implementation-baseline/02_KONJAC_%E5%85%A8%E4%BD%93%E6%96%BD%E5%B7%A5%E5%B7%A5%E7%A8%8B%E8%A1%A8_v1_20261109.md), and [03 Codex construction order](docs/implementation-baseline/03_KONJAC_Codex%E5%85%A8%E4%BD%93%E7%B3%BB%E6%96%BD%E5%B7%A5%E6%8C%87%E7%A4%BA%E6%9B%B8_v1_20261109.md). Read all three before product changes. The original files and their hashes are recorded in [the source receipt](docs/implementation-baseline/README.ja.md). The existing [Product specification](docs/PRODUCT_SPEC.ja.md) and [Architecture](docs/ARCHITECTURE.ja.md) are derived repository documents and must stay aligned with that baseline.
 
 ## 1. Source of truth and change discipline
 
@@ -25,15 +25,16 @@ Do not reinterpret this repository as a generic MINIDORA AI shell, speech-to-tex
 
 ## 3. User experience and extension boundaries
 
-- Design the entire multi-translation product scope from the outset, then implement and validate in tracked slices; do not drop intended modes because a current implementation is incomplete.
+- Design and construct the entire multi-translation system across its declared scope. A01–A07 and U01–U12 are coverage and acceptance indexes, not per-feature completion gates. Component checks needed for type, safety, build integrity, and whole-system wiring are allowed; do not switch to a repeated pattern of accepting one feature before starting the next.
 - Preserve source/target language IDs, speaker identity, time alignment, document layout references, original content, revision and provenance where applicable.
-- Use shared request/event/output contracts across Windows, browser, mobile, services, and approved host-app connectors. Platform-dependent capture remains isolated.
+- Use one logical request/event/output contract across Windows, Linux, macOS, Android, iOS, Web, services, and approved host-app connectors. Keep JSON Schema/OpenAPI/Protobuf/ABI as exchange projections; platform-dependent capture remains isolated.
+- Use Rust as the selected first choice for the common processing core. Tauri 2 is a desktop/shared-UI comparison candidate, not a completed or accepted platform choice. Python is limited to the MINIDORA inspection and contract-QC tools.
 - Do not capture, store, upload, transmit, or inject text/audio/video without the required OS permissions, source rights and explicit user-governed authorization. Local vs remote processing is observable.
 - Treat private communications and transcripts as sensitive. Redact logs; establish retention/deletion, isolation and encryption requirements before deployment.
 
 ## 4. Third-party sources and attribution
 
-RTranslator (Apache-2.0), Haas-ASR (Apache-2.0), speech.cpp (MIT) are **candidates for analysis and selective lawful reuse**, not a license to transplant all code, model weights, icons or datasets. Record the exact commit, copied paths, notices, dependency terms, models, assets and modifications before import. Do not claim third-party benchmarks as Konjac performance. See [Source review](docs/SOURCE_REVIEW.ja.md) and [NOTICE](NOTICE).
+RTranslator 3.0 at `ae96b008e31323ba8b75f94e8b5d4c29b8c1307e` is the selected Android external foundation for service/audio lifecycle, conversation UI, Bluetooth, TTS, permission, and generic resource-management responsibilities. Selection does not mean source integration is complete. Translation engines and translation model assets are excluded. Any imported file must retain Apache-2.0 notices and record exact paths, modifications, dependencies, and separate model/asset terms. Haas-ASR (Apache-2.0) and speech.cpp (MIT) remain analysis candidates. See [Source review](docs/SOURCE_REVIEW.ja.md) and [NOTICE](NOTICE).
 
 Keep private HDS/engine theory and protected mappings out of this public repository. Publish externally observable interfaces and behavior, not unpublished internal theory.
 
@@ -44,12 +45,13 @@ Keep private HDS/engine theory and protected mappings out of this public reposit
 - Explicitly distinguish `PASS`, `FAIL` and `NOT RUN` / `UNVERIFIED`. No fake or test-only production path. A local run is not Windows-installed/mobile/browser proof.
 - Preserve original artifacts and prior outcomes; changes require provenance and rollback path.
 - No new release, external publication, third-party integration, device action or irreversible cleanup without user authorization.
-- The current repository is **documentation-only**. Do not invent commands, build results, CI runs or executable products until they exist.
+- The repository contains product/design documentation, a first Rust logical-core implementation, a language-neutral JSON projection, and contract validation tests. It still has no runnable translation product, MINIDORA runtime adapter, service, platform adapter, or CI result unless implemented and verified in the current checkout. Report the scope of each check.
 
 ## 6. Deliverables and language
 
 - Keep top-level README usable in English and `README.ja.md` usable in Japanese. Detailed Japanese specifications are the initial source of truth; English translations must not silently change meaning.
 - For a substantive task, report: changed files, why, observed proof, tests run/not run, limitations and next acceptance gate.
+- For managed cloud setup, use [the current Rust/Python environment procedure](docs/CLOUD_ENVIRONMENT_SETUP.ja.md); it does not imply settings were saved or the environment was published.
 - Preserve author attribution to **がっちむち♂ / gatchimuchio**.
 
 ## 7. Precedence

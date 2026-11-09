@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0.0",
+  "engine": "MINIDORA-BETA",
+  "distribution": "minidora-notnn",
+  "version": "0.6.0b1",
+  "repository": "https://github.com/gatchimuchio/MINIDORA-BETA",
+  "observed_repository_head": "1c546e77007afa0a9eeb3a44f07da99d84c383eb",
+  "frozen_source_baseline": "fe5822de63644bdaea9208a98046f71684dffae2",
+  "upstream_source_commit": "9307d7e2b1799750ecef1957d85128fcbe403d02",
+  "public_entry_points": ["minidora.engine_beta.ミニドラβ実行機.実行", "minidora.engine_beta.ミニドラβ実行機.結果を参照"],
+  "capabilities": {
+    "translation.text": {
+      "state": "UNSUPPORTED",
+      "reason_code": "NO_PUBLIC_TRANSLATION_OPERATION"
+    },
+    "translation.multilingual": {
+      "state": "UNSUPPORTED",
+      "reason_code": "NO_LANGUAGE_PAIR_CONTRACT"
+    },
+    "translation.streaming": {
+      "state": "UNSUPPORTED",
+      "reason_code": "NO_PUBLIC_STREAMING_TRANSLATION_CONTRACT"
+    }
+  },
+  "audit_date": "2026-11-09",
+  "audit_evidence": {
+    "controlled_example": "PASS; caller-supplied action, not a translation test",
+    "scoped_regression": "PASS; 313 tests on isolated install, not a translation test",
+    "translation_acceptance": "BLOCKED; no audited public translation capability"
+  }
+}
