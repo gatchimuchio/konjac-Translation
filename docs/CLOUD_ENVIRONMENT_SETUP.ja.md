@@ -59,7 +59,7 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 /workspace/.venvs/konjac-translation/bin/python -m pip check
 ```
 
-2026-11-09の現環境でRust 1.99.1テスト19件、Python 3.12テスト15件、Rust formatter、clippy、`pip check`がPASS。これは共通論理型・同意評価・セッションと入力版の参照境界・言語ペア/文脈/モード別能力境界・拒否時の実行前停止・JSON/OpenAPI射影の局所確認であり、MINIDORA実訳、永続化、アプリ、サービス、OS別QAや製品受入を示さない。
+2026-11-09の現環境でRust 1.99.1テスト21件、Python 3.12テスト15件、Rust formatter、clippy、`pip check`がPASS。これは共通論理型・同意評価・セッションと入力版の参照境界・言語ペア/文脈/モード別能力境界・要求時間窓・拒否/期限/取消時の実行前停止・JSON/OpenAPI射影の局所確認であり、実行中取消伝播、MINIDORA実訳、永続化、アプリ、サービス、OS別QAや製品受入を示さない。
 
 ## クラウド設定の保存状態
 

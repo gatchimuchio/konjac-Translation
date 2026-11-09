@@ -500,6 +500,12 @@ impl TranslationRequest {
             || self.input_revision == 0
             || self.attempt == 0
             || self.idempotency_key.len() < 16
+            || self
+                .deadline
+                .is_some_and(|deadline| deadline <= self.created_at)
+            || self
+                .cancel_requested_at
+                .is_some_and(|cancelled_at| cancelled_at < self.created_at)
         {
             return Err(ContractError::InvalidRequest);
         }
@@ -1287,6 +1293,23 @@ mod tests {
         assert_eq!(
             request(ProcessingLocation::RemoteWithConsent, None).validate(),
             Err(ContractError::MissingProcessingConsent)
+        );
+    }
+
+    #[test]
+    fn request_deadline_and_cancellation_cannot_precede_a_valid_request_window() {
+        let mut invalid_deadline = request(ProcessingLocation::LocalOnly, None);
+        invalid_deadline.deadline = Some(at(1));
+        assert_eq!(
+            invalid_deadline.validate(),
+            Err(ContractError::InvalidRequest)
+        );
+
+        let mut invalid_cancellation = request(ProcessingLocation::LocalOnly, None);
+        invalid_cancellation.cancel_requested_at = Some(at(0));
+        assert_eq!(
+            invalid_cancellation.validate(),
+            Err(ContractError::InvalidRequest)
         );
     }
 

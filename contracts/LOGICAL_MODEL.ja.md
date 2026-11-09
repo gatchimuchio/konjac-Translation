@@ -20,7 +20,7 @@
 
 ### `TranslationRequest`
 
-一つ以上の`SourceSpan`とその入力版、`session_id + session_revision`、訳先言語集合、文脈・用語版、出力希望、batch/streaming実行モード、処理場所、期限・取消条件、再試行番号を束ねる。要求の検査時にセッションがアクティブで、言語・文脈・処理方針が一致すること、SourceSpanがSourceAssetと正確な入力版に解決することを検証する。要求IDと冪等性キーは異なる要求を誤って統合しない。対象外・入力不備・権限不足はエンジン成功へ流さない。
+一つ以上の`SourceSpan`とその入力版、`session_id + session_revision`、訳先言語集合、文脈・用語版、出力希望、batch/streaming実行モード、処理場所、期限・取消条件、再試行番号を束ねる。要求の検査時にセッションがアクティブで、言語・文脈・処理方針が一致すること、SourceSpanがSourceAssetと正確な入力版に解決することを検証する。期限または取消が能力照会前に成立した要求はエンジンへ渡さない。要求IDと冪等性キーは異なる要求を誤って統合しない。対象外・入力不備・権限不足はエンジン成功へ流さない。
 
 ### `EngineExecution`
 
@@ -54,6 +54,8 @@ MINIDORAの厳密な配布版／commit、公開入口、要求ID、能力照会�
 ## 4. 実装・シリアライズ射影
 
 Rust共通基盤は本論理モデルの第一実装で、[`crates/konjac-core`](../crates/konjac-core)に7中核record、同意grant/revocation、TranslationResult/Event、主要な局所不変条件、セッション・入力版・SourceAsset・spanの参照検査、全入力/訳先対応の境界検証、言語ペア・文脈要否・実行モードを束縛した閉鎖型能力許可を実装した。EngineRunResult検査は入力span、アクティブセッションと版、要求対象、許可集合、実行証跡のエンジン・能力証拠、訳結果の対応を横断照合する。永続化、状態遷移全体、OS権限、観測/監査保管、保存時のsequence採番と原子的追記は未実装であり、G2/W01/W02は未完了。現在の[`konjac-v1.schema.json`](konjac-v1.schema.json)と[`openapi-v1.json`](openapi-v1.json)は検証可能なJSON射影だが、論理モデルやRust型の全項目・状態を完全に表現していない。G2で生成/検査関係と残る欠落を閉じる。JSON Schema/OpenAPI形式を将来のコンパイル基盤やOS SDKへ漏出させない。
+
+`execute_guarded_at`は期限・取消時刻を比較し、先に成立した終端理由があれば能力照会前に停止する。入力時刻の矛盾も拒否するが、実行中の取消伝播・停止確認は実装していない。
 
 現在確認した射影差分：`SourceAsset`の権利・元指紋・時刻基準、`SourceSpan`のpayload形状、`EngineExecution`の能力状態・照会時刻・入力／応答指紋、`TranslationVariant`／`DeliveryArtifact`の状態と配送許可、記録ごとの版・状態対応、撤回・再起動後の復旧・出力消去が残る。要求のsession/request revisionとexecution modeはJSON射影へ追加したが、Rustとの全フィールド／全状態同値は未検証。現行JSONテストPASSは射影の局所検査であり、論理契約全体の適合証明ではない。
 

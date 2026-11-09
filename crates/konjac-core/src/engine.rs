@@ -6,6 +6,7 @@
 //! `SUPPORTED` evidence.
 
 use std::collections::{BTreeSet, HashMap};
+use std::time::SystemTime;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -165,9 +166,41 @@ pub fn execute_guarded(
     source_assets: &[SourceAsset],
     source_spans: &[SourceSpan],
 ) -> Result<EngineRunResult, EnginePortError> {
+    execute_guarded_at(
+        engine,
+        session,
+        request,
+        source_assets,
+        source_spans,
+        DateTime::<Utc>::from(SystemTime::now()),
+    )
+}
+
+/// Deterministic form used by schedulers and tests to enforce request deadlines
+/// and already-recorded cancellation before capability inspection begins.
+pub fn execute_guarded_at(
+    engine: &dyn EnginePort,
+    session: &TranslationSession,
+    request: &TranslationRequest,
+    source_assets: &[SourceAsset],
+    source_spans: &[SourceSpan],
+    now: DateTime<Utc>,
+) -> Result<EngineRunResult, EnginePortError> {
     request
         .validate_against_session(session, source_assets, source_spans)
         .map_err(map_contract_error)?;
+
+    let cancellation = request.cancel_requested_at.filter(|at| *at <= now);
+    let timeout = request.deadline.filter(|deadline| *deadline <= now);
+    match (cancellation, timeout) {
+        (Some(cancelled_at), Some(deadline)) if cancelled_at <= deadline => {
+            return Err(EnginePortError::RequestCancelledBeforeExecution);
+        }
+        (Some(_), Some(_)) => return Err(EnginePortError::RequestTimedOutBeforeExecution),
+        (Some(_), None) => return Err(EnginePortError::RequestCancelledBeforeExecution),
+        (None, Some(_)) => return Err(EnginePortError::RequestTimedOutBeforeExecution),
+        (None, None) => {}
+    }
 
     let context_required = !request.context_refs.is_empty() || !request.terminology_refs.is_empty();
     let queries: BTreeSet<_> = source_spans
@@ -452,6 +485,10 @@ pub trait EnginePort: Send + Sync {
 pub enum EnginePortError {
     #[error("request is invalid")]
     InvalidRequest,
+    #[error("request was cancelled before engine execution")]
+    RequestCancelledBeforeExecution,
+    #[error("request deadline elapsed before engine execution")]
+    RequestTimedOutBeforeExecution,
     #[error("source span is invalid")]
     InvalidSourceSpan,
     #[error("source spans do not match the request revision or session")]
@@ -599,6 +636,53 @@ mod tests {
                 state: CapabilityState::Unsupported,
                 reason_code: "NO_PUBLIC_TRANSLATION_OPERATION".into(),
             }]))
+        );
+    }
+
+    #[test]
+    fn guarded_run_honors_cancellation_and_deadline_before_capability_inspection() {
+        let (session, mut request, asset, span, _, _) = contract_fixture();
+        request.deadline = Some(at(3));
+        request.cancel_requested_at = Some(at(2));
+        assert_eq!(
+            execute_guarded_at(
+                &UnsupportedPort { identity: engine() },
+                &session,
+                &request,
+                std::slice::from_ref(&asset),
+                std::slice::from_ref(&span),
+                at(4)
+            ),
+            Err(EnginePortError::RequestCancelledBeforeExecution)
+        );
+
+        let (session, mut request, asset, span, _, _) = contract_fixture();
+        request.deadline = Some(at(2));
+        request.cancel_requested_at = Some(at(3));
+        assert_eq!(
+            execute_guarded_at(
+                &UnsupportedPort { identity: engine() },
+                &session,
+                &request,
+                std::slice::from_ref(&asset),
+                std::slice::from_ref(&span),
+                at(4)
+            ),
+            Err(EnginePortError::RequestTimedOutBeforeExecution)
+        );
+
+        let (session, mut request, asset, span, _, _) = contract_fixture();
+        request.deadline = Some(at(3));
+        assert_eq!(
+            execute_guarded_at(
+                &UnsupportedPort { identity: engine() },
+                &session,
+                &request,
+                &[asset],
+                &[span],
+                at(4)
+            ),
+            Err(EnginePortError::RequestTimedOutBeforeExecution)
         );
     }
 
