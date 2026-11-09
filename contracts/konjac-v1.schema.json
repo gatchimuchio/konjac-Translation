@@ -404,20 +404,21 @@
       "allOf": [
         {"$ref": "#/$defs/base"},
         {
+          "$comment": "Sequence is an unsigned 64-bit value; contiguous sequencing and lifecycle ordering are validated across event pages at runtime.",
           "properties": {
             "record_type": {"const": "TranslationEvent"},
             "request_id": {"$ref": "#/$defs/id"},
-            "sequence": {"type": "integer", "minimum": 1},
+            "sequence": {"type": "integer", "minimum": 1, "maximum": 18446744073709551615},
             "event_type": {"enum": ["accepted", "processing", "variant_updated", "completed", "unsupported", "suspended", "failed", "cancelled", "timed_out", "delivery_updated"]},
-            "variant_id": {"$ref": "#/$defs/id"},
-            "result_id": {"$ref": "#/$defs/id"},
-            "delivery_artifact_id": {"$ref": "#/$defs/id"},
+            "variant_id": {"type": ["string", "null"], "format": "uuid"},
+            "result_id": {"type": ["string", "null"], "format": "uuid"},
+            "delivery_artifact_id": {"type": ["string", "null"], "format": "uuid"},
             "occurred_at": {"$ref": "#/$defs/timestamp"}
           },
           "allOf": [
-            {"if": {"properties": {"event_type": {"const": "variant_updated"}}, "required": ["event_type"]}, "then": {"required": ["variant_id"]}},
-            {"if": {"properties": {"event_type": {"enum": ["completed", "unsupported", "suspended", "failed", "cancelled", "timed_out"]}}, "required": ["event_type"]}, "then": {"required": ["result_id"]}},
-            {"if": {"properties": {"event_type": {"const": "delivery_updated"}}, "required": ["event_type"]}, "then": {"required": ["delivery_artifact_id"]}}
+            {"if": {"properties": {"event_type": {"const": "variant_updated"}}, "required": ["event_type"]}, "then": {"required": ["variant_id"], "properties": {"variant_id": {"$ref": "#/$defs/id"}}}},
+            {"if": {"properties": {"event_type": {"enum": ["completed", "unsupported", "suspended", "failed", "cancelled", "timed_out"]}}, "required": ["event_type"]}, "then": {"required": ["result_id"], "properties": {"result_id": {"$ref": "#/$defs/id"}}}},
+            {"if": {"properties": {"event_type": {"const": "delivery_updated"}}, "required": ["event_type"]}, "then": {"required": ["delivery_artifact_id"], "properties": {"delivery_artifact_id": {"$ref": "#/$defs/id"}}}}
           ],
           "required": ["request_id", "sequence", "event_type", "occurred_at"]
         }

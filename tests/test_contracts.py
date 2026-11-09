@@ -36,7 +36,7 @@ SAMPLES = [
     record("TranslationVariant", "10000000-0000-4000-8000-000000000008", request_id="10000000-0000-4000-8000-000000000006", source_span_id="10000000-0000-4000-8000-000000000005", target_language="en", revision=1, status="UNSUPPORTED", text=None, engine_execution_id=None, provenance_ref=None, speaker_id=None, position=None, produced_at=STAMP),
     record("TranslationResult", "10000000-0000-4000-8000-000000000009", request_id="10000000-0000-4000-8000-000000000006", request_revision=1, status="UNSUPPORTED", variant_ids=[], engine_execution_ids=["10000000-0000-4000-8000-000000000007"], failure_code="CAPABILITY_NOT_EXPOSED", completed_at=STAMP),
     record("DeliveryArtifact", "10000000-0000-4000-8000-000000000010", variant_id="10000000-0000-4000-8000-000000000008", format="text", payload_ref={"kind": "local", "key": "result/10000000-0000-4000-8000-000000000009"}, destination={"kind": "local", "key": "local-view"}, position=None, delivery_consent_id=None, status="PREPARED", delivered_at=None, audit_id="10000000-0000-4000-8000-000000000014"),
-    record("TranslationEvent", "10000000-0000-4000-8000-000000000011", request_id="10000000-0000-4000-8000-000000000006", sequence=1, event_type="unsupported", result_id="10000000-0000-4000-8000-000000000009", occurred_at=STAMP),
+    record("TranslationEvent", "10000000-0000-4000-8000-000000000011", request_id="10000000-0000-4000-8000-000000000006", sequence=1, event_type="unsupported", variant_id=None, result_id="10000000-0000-4000-8000-000000000009", delivery_artifact_id=None, occurred_at=STAMP),
     record("ConsentRevocation", "10000000-0000-4000-8000-000000000012", grant_id="10000000-0000-4000-8000-000000000001", revoked_by="owner", revoked_at=STAMP, reason_code="USER_REQUEST"),
 ]
 
@@ -72,10 +72,18 @@ class ContractSchemaTests(unittest.TestCase):
         for event_type, reference in required_references.items():
             with self.subTest(event_type=event_type):
                 event["event_type"] = event_type
+                event[reference] = None
+                self.assertFalse(VALIDATOR.is_valid(event))
                 event[reference] = "10000000-0000-4000-8000-000000000013"
                 VALIDATOR.validate(event)
                 event.pop(reference)
                 self.assertFalse(VALIDATOR.is_valid(event))
+
+        event = deepcopy(SAMPLES[9])
+        event["sequence"] = 18446744073709551615
+        VALIDATOR.validate(event)
+        event["sequence"] += 1
+        self.assertFalse(VALIDATOR.is_valid(event))
 
     def test_source_asset_projection_matches_logical_references(self) -> None:
         asset = deepcopy(SAMPLES[1])

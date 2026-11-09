@@ -36,7 +36,7 @@ MINIDORAの厳密な配布版／commit、公開入口、要求ID、能力照会�
 
 ## 2. 補助レコードと対応関係
 
-同意付与／撤回、認識結果、TranslationResult、順序付きTranslationEvent、操作監査は中核レコードを補う。TranslationResultは要求版と終端、Variant/EngineExecution ID集合を結ぶ。TranslationEventは要求単位の単調sequence、result/variant/artifact参照、発生時刻を結ぶ。補助レコードを追加しても上記7種類の意味関係を変えない。レコード間の参照整合、権限の対象・範囲・期限、版の単調性、配送の一意性は型だけでなく実行時に照合する。
+同意付与／撤回、認識結果、TranslationResult、順序付きTranslationEvent、操作監査は中核レコードを補う。TranslationResultは要求版と終端、Variant/EngineExecution ID集合を結ぶ。TranslationEventは要求単位のu64単調sequence、nullableなresult/variant/artifact参照、発生時刻を結ぶ。該当種別の参照は必須かつ非nullで、ページをまたぐ連続性とライフサイクル順序は実行時に検査する。補助レコードを追加しても上記7種類の意味関係を変えない。レコード間の参照整合、権限の対象・範囲・期限、版の単調性、配送の一意性は型だけでなく実行時に照合する。
 
 論理的な相関キーは`source_asset_id`、`session_id + session_revision`、`span_id + input_revision`、`request_id + request_revision`、`engine_execution_id`、`target_language + result_revision`、`delivery_artifact_id`。複数言語・媒体・端末・順不同イベントでも原文との対応を失わない。
 
@@ -57,7 +57,7 @@ Rust共通基盤は本論理モデルの第一実装で、[`crates/konjac-core`]
 
 `execute_guarded_at`は期限・取消時刻を比較し、先に成立した終端理由があれば能力照会前に停止する。入力時刻の矛盾も拒否するが、実行中の取消伝播・停止確認は実装していない。
 
-現在確認した残差：`TranslationVariant`とEngineExecutionの参照結果一致、TranslationResultと要求・実行・Variant集合の相互参照、DeliveryArtifactの監査記録参照、記録ごとの版・状態対応、撤回・再起動後の復旧・出力消去が残る。TranslationResultのoptional完了時刻・失敗コードとstatus別配列／終端条件・u64 revision上限はRustとJSON Schemaで照合した。DeliveryPermitはartifactと確定Variant・原文SourceSpan・成功EngineExecution・能力permitを束縛し、Deliver grantを使用時に再検査する。保存payloadの実体確認、監査IDの実レコード照合、サービス経由の実配送は未実装。DeliveryArtifactのpayload・宛先・配置参照、配送状態、同意ID、配送時刻、監査IDはRustとJSONの局所射影を照合した。TranslationVariantは本文なしの暫定状態を許し、暫定本文がある場合と確定状態には実行証跡を要求し、失敗状態の本文を禁止する条件をJSON射影にも反映した。`SourceAsset`の元fingerprint、owner/rights/content参照、取得同意、時間基準、metadataはJSON射影とRust検査を照合した。`SourceSpan`のtagged payload/position union、観測元、nullable fieldsもRustとJSONに揃えたが、時間区間の大小と画像矩形の包含条件はRust実行時検査が必要。`EngineExecution`に版付き能力証拠、入力／応答fingerprintと終端対応条件を反映し、版一致・時刻順のような複数フィールド条件はRust実行時で検査する。ConsentGrant/TranslationSession/participantのnullable Option、非空同意対象、remote session同意、session revision上限、重複参照、`und`タグ、要求のsession/request revisionとexecution modeに加え、TranslationRequestのnullable同意/期限/取消、revision/attempt上限、Unicode冪等キー長、参照重複はRustとJSON射影で局所照合済み。timestamp順序などの実行時検査と全フィールド／全状態の射影同値は未検証。現行JSONテストPASSは射影の局所検査であり、論理契約全体の適合証明ではない。
+現在確認した残差：`TranslationVariant`とEngineExecutionの参照結果一致、TranslationResultと要求・実行・Variant集合の相互参照、DeliveryArtifactの監査記録参照、記録ごとの版・状態対応、撤回・再起動後の復旧・出力消去が残る。TranslationResultのoptional完了時刻・失敗コードとstatus別配列／終端条件・u64 revision上限はRustとJSON Schemaで照合した。DeliveryPermitはartifactと確定Variant・原文SourceSpan・成功EngineExecution・能力permitを束縛し、Deliver grantを使用時に再検査する。保存payloadの実体確認、監査IDの実レコード照合、サービス経由の実配送は未実装。DeliveryArtifactのpayload・宛先・配置参照、配送状態、同意ID、配送時刻、監査IDはRustとJSONの局所射影を照合した。TranslationVariantは本文なしの暫定状態を許し、暫定本文がある場合と確定状態には実行証跡を要求し、失敗状態の本文を禁止する条件をJSON射影にも反映した。`SourceAsset`の元fingerprint、owner/rights/content参照、取得同意、時間基準、metadataはJSON射影とRust検査を照合した。`SourceSpan`のtagged payload/position union、観測元、nullable fieldsもRustとJSONに揃えたが、時間区間の大小と画像矩形の包含条件はRust実行時検査が必要。`EngineExecution`に版付き能力証拠、入力／応答fingerprintと終端対応条件を反映し、版一致・時刻順のような複数フィールド条件はRust実行時で検査する。TranslationEventのnullable参照・種別別必須参照・u64 sequence上限、ConsentGrant/TranslationSession/participantのnullable Option、非空同意対象、remote session同意、session revision上限、重複参照、`und`タグ、要求のsession/request revisionとexecution modeに加え、TranslationRequestのnullable同意/期限/取消、revision/attempt上限、Unicode冪等キー長、参照重複はRustとJSON射影で局所照合済み。timestamp順序などの実行時検査と全フィールド／全状態の射影同値は未検証。現行JSONテストPASSは射影の局所検査であり、論理契約全体の適合証明ではない。
 
 ## 5. 実装交換・AICompiler移管
 
