@@ -676,7 +676,7 @@ impl TranslationRequest {
             || self.revision == 0
             || self.input_revision == 0
             || self.attempt == 0
-            || self.idempotency_key.len() < 16
+            || !(16..=256).contains(&self.idempotency_key.chars().count())
             || self
                 .deadline
                 .is_some_and(|deadline| deadline <= self.created_at)
@@ -1914,6 +1914,29 @@ mod tests {
             invalid_cancellation.validate(),
             Err(ContractError::InvalidRequest)
         );
+
+        let mut boundary_request = request(ProcessingLocation::LocalOnly, None);
+        boundary_request.session_revision = u64::MAX;
+        boundary_request.revision = u64::MAX;
+        boundary_request.input_revision = u64::MAX;
+        boundary_request.attempt = u32::MAX;
+        boundary_request.idempotency_key = "x".repeat(256);
+        boundary_request.deadline = Some(at(2));
+        boundary_request.cancel_requested_at = Some(at(1));
+        assert_eq!(boundary_request.validate(), Ok(()));
+
+        boundary_request.idempotency_key = "x".repeat(257);
+        assert_eq!(
+            boundary_request.validate(),
+            Err(ContractError::InvalidRequest)
+        );
+        boundary_request.idempotency_key = "界".repeat(15);
+        assert_eq!(
+            boundary_request.validate(),
+            Err(ContractError::InvalidRequest)
+        );
+        boundary_request.idempotency_key = "界".repeat(16);
+        assert_eq!(boundary_request.validate(), Ok(()));
     }
 
     #[test]

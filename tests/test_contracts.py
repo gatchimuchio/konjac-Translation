@@ -31,7 +31,7 @@ SAMPLES = [
     record("SourceAsset", "10000000-0000-4000-8000-000000000002", media_kind="text", origin="user_input", media_type="text/plain", retention="ephemeral", metadata={}),
     record("TranslationSession", "10000000-0000-4000-8000-000000000003", revision=1, status="active", source_language="ja", target_languages=["en"], participants=[{"participant_id": "10000000-0000-4000-8000-000000000004", "role": "owner", "consent_grant_ids": []}], context_refs=[], terminology_refs=[], processing_location="local_only", consent_grant_ids=[], retention="ephemeral"),
     record("SourceSpan", "10000000-0000-4000-8000-000000000005", asset_id="10000000-0000-4000-8000-000000000002", session_id="10000000-0000-4000-8000-000000000003", revision=1, payload={"kind": "text", "text": "こんにちは"}, source_language="ja", observation_origin="typed"),
-    record("TranslationRequest", "10000000-0000-4000-8000-000000000006", session_id="10000000-0000-4000-8000-000000000003", session_revision=1, revision=1, source_span_ids=["10000000-0000-4000-8000-000000000005"], input_revision=1, target_languages=["en"], context_refs=[], terminology_refs=[], requested_outputs=["text"], execution_mode="batch", processing_location="local_only", idempotency_key="konjac-request-0001", attempt=1),
+    record("TranslationRequest", "10000000-0000-4000-8000-000000000006", session_id="10000000-0000-4000-8000-000000000003", session_revision=1, revision=1, source_span_ids=["10000000-0000-4000-8000-000000000005"], input_revision=1, target_languages=["en"], context_refs=[], terminology_refs=[], requested_outputs=["text"], execution_mode="batch", processing_location="local_only", processing_consent_id=None, idempotency_key="konjac-request-0001", attempt=1, deadline=None, cancel_requested_at=None),
     record("EngineExecution", "10000000-0000-4000-8000-000000000007", request_id="10000000-0000-4000-8000-000000000006", engine_name="MINIDORA-BETA", engine_version="0.6.0b1", engine_revision="fe5822de63644bdaea9208a98046f71684dffae2", public_entry_point="minidora.engine_beta.ミニドラβ実行機", capability={"capability_id": "translation.text", "state": "UNSUPPORTED", "engine_version": "0.6.0b1", "engine_revision": "fe5822de63644bdaea9208a98046f71684dffae2", "reason_code": "NO_PUBLIC_TRANSLATION_OPERATION", "observed_at": STAMP}, input_fingerprint="0" * 64, response_fingerprint=None, outcome="UNSUPPORTED", started_at=STAMP, finished_at=STAMP, diagnostic_code="NO_PUBLIC_TRANSLATION_OPERATION", trace_ref=None),
     record("TranslationVariant", "10000000-0000-4000-8000-000000000008", request_id="10000000-0000-4000-8000-000000000006", source_span_id="10000000-0000-4000-8000-000000000005", target_language="en", revision=1, status="UNSUPPORTED", text=None, engine_execution_id=None, provenance_ref=None, speaker_id=None, position=None, produced_at=STAMP),
     record("TranslationResult", "10000000-0000-4000-8000-000000000009", request_id="10000000-0000-4000-8000-000000000006", request_revision=1, status="UNSUPPORTED", variant_ids=[], engine_execution_ids=["10000000-0000-4000-8000-000000000007"], failure_code="CAPABILITY_NOT_EXPOSED", completed_at=STAMP),
@@ -260,11 +260,34 @@ class ContractSchemaTests(unittest.TestCase):
 
     def test_translation_request_binds_session_revision_and_execution_mode(self) -> None:
         request = deepcopy(SAMPLES[4])
-        for field in ("session_revision", "revision", "execution_mode"):
+        for field in ("session_revision", "revision", "execution_mode", "processing_consent_id", "deadline", "cancel_requested_at"):
             incomplete = deepcopy(request)
             incomplete.pop(field)
             with self.subTest(missing=field):
                 self.assertFalse(VALIDATOR.is_valid(incomplete))
+
+        for field in ("session_revision", "revision", "input_revision"):
+            request[field] = 18446744073709551615
+        request["attempt"] = 4294967295
+        request["idempotency_key"] = "x" * 256
+        VALIDATOR.validate(request)
+
+        request["session_revision"] += 1
+        self.assertFalse(VALIDATOR.is_valid(request))
+        request["session_revision"] = 1
+        request["attempt"] += 1
+        self.assertFalse(VALIDATOR.is_valid(request))
+        request["attempt"] = 1
+        request["idempotency_key"] = "x" * 257
+        self.assertFalse(VALIDATOR.is_valid(request))
+        request["idempotency_key"] = "界" * 15
+        self.assertFalse(VALIDATOR.is_valid(request))
+        request["idempotency_key"] = "界" * 16
+        VALIDATOR.validate(request)
+
+        reference = {"kind": "local", "key": "context/1"}
+        request["context_refs"] = [reference, reference]
+        self.assertFalse(VALIDATOR.is_valid(request))
 
     def test_final_variant_requires_engine_evidence_and_nonempty_text(self) -> None:
         variant = deepcopy(SAMPLES[6])

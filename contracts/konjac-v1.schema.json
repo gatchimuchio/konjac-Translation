@@ -238,28 +238,29 @@
       "allOf": [
         {"$ref": "#/$defs/base"},
         {
+          "$comment": "Runtime validation additionally requires deadline > created_at and cancel_requested_at >= created_at.",
           "properties": {
             "record_type": {"const": "TranslationRequest"},
             "session_id": {"$ref": "#/$defs/id"},
-            "session_revision": {"type": "integer", "minimum": 1},
-            "revision": {"type": "integer", "minimum": 1},
+            "session_revision": {"type": "integer", "minimum": 1, "maximum": 18446744073709551615},
+            "revision": {"type": "integer", "minimum": 1, "maximum": 18446744073709551615},
             "source_span_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "minItems": 1, "uniqueItems": true},
-            "input_revision": {"type": "integer", "minimum": 1},
+            "input_revision": {"type": "integer", "minimum": 1, "maximum": 18446744073709551615},
             "target_languages": {"type": "array", "items": {"$ref": "#/$defs/languageTag"}, "minItems": 1, "uniqueItems": true},
-            "context_refs": {"type": "array", "items": {"$ref": "#/$defs/reference"}},
-            "terminology_refs": {"type": "array", "items": {"$ref": "#/$defs/reference"}},
+            "context_refs": {"type": "array", "items": {"$ref": "#/$defs/reference"}, "uniqueItems": true},
+            "terminology_refs": {"type": "array", "items": {"$ref": "#/$defs/reference"}, "uniqueItems": true},
             "requested_outputs": {"type": "array", "items": {"enum": ["text", "subtitle", "audio", "document", "overlay", "api"]}, "minItems": 1, "uniqueItems": true},
             "execution_mode": {"enum": ["batch", "streaming"]},
             "processing_location": {"enum": ["local_only", "remote_with_consent"]},
-            "processing_consent_id": {"$ref": "#/$defs/id"},
+            "processing_consent_id": {"type": ["string", "null"], "format": "uuid"},
             "idempotency_key": {"type": "string", "minLength": 16, "maxLength": 256},
-            "attempt": {"type": "integer", "minimum": 1},
-            "deadline": {"$ref": "#/$defs/timestamp"},
-            "cancel_requested_at": {"$ref": "#/$defs/timestamp"}
+            "attempt": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+            "deadline": {"type": ["string", "null"], "format": "date-time"},
+            "cancel_requested_at": {"type": ["string", "null"], "format": "date-time"}
           },
-          "required": ["session_id", "session_revision", "revision", "source_span_ids", "input_revision", "target_languages", "context_refs", "terminology_refs", "requested_outputs", "execution_mode", "processing_location", "idempotency_key", "attempt"]
+          "required": ["session_id", "session_revision", "revision", "source_span_ids", "input_revision", "target_languages", "context_refs", "terminology_refs", "requested_outputs", "execution_mode", "processing_location", "processing_consent_id", "idempotency_key", "attempt", "deadline", "cancel_requested_at"]
         },
-        {"if": {"properties": {"processing_location": {"const": "remote_with_consent"}}, "required": ["processing_location"]}, "then": {"required": ["processing_consent_id"]}}
+        {"if": {"properties": {"processing_location": {"const": "remote_with_consent"}}, "required": ["processing_location"]}, "then": {"properties": {"processing_consent_id": {"type": "string", "format": "uuid"}}}}
       ],
       "unevaluatedProperties": false
     },

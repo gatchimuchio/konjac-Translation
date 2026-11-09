@@ -43,7 +43,7 @@
 | `TranslationSession` | 入出力言語、参加者、共有文脈・用語、処理場所、保持方針 |
 | `ConsentGrant` / `ConsentRevocation` | 主体・対象・操作範囲・明示許可、および履歴を残す独立した撤回記録 |
 | `SourceSpan` | 原文、言語候補、話者、観測方法、時刻／文書位置、来歴 |
-| `TranslationRequest` | session/request/input各版、訳先集合、文脈、出力形式、実行モード、重複キー、試行・期限・停止 |
+| `TranslationRequest` | session/request/input各版、訳先集合、文脈、出力形式、実行モード、重複キー、試行上限、nullableな同意・期限・取消、停止 |
 | `EngineExecution` | 厳密なエンジン版・commit・公開入口・版付き能力証拠・入力／応答指紋・実行結果・診断参照 |
 | `TranslationVariant` | 元区間に結び付く、言語別・版付き結果または明示的失敗 |
 | `TranslationResult` | 要求全体の終端、結果一覧、エンジン証跡、失敗理由 |
@@ -83,6 +83,6 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 ```
 
-Python 23件（JSON Schema/OpenAPI 19件、能力ゲート4件）は射影形状、BCP 47タグ形式、要求版条件、未対応結果の無訳文条件、event typeごとのvariant/result/artifact参照、SourceAssetの参照/同意/metadata条件、SourceSpanのtagged payload/position/null条件、EngineExecutionの能力証拠/fingerprint/終端対応、TranslationResultのnullable fieldとstatus別完了・失敗条件、TranslationVariantの暫定／確定状態条件、DeliveryArtifactのpayload/宛先/配置参照と配送状態/同意/時刻条件、能力ゲートを検査する。Rust 39件は論理record、BCP 47構文・正規化、不正言語タグ、同意の主体/対象/用途/期限/撤回と重複grant ID拒否、SourceAssetの同意/fingerprint/metadata/参照長、SourceSpanのpayload/position/観測元、EngineExecutionの能力証拠/版一致/fingerprint/終端対応、TranslationResultの進行・終端状態とnullable evidence/失敗コード境界、TranslationVariantの暫定状態と確定実行証跡、DeliveryArtifactのpayload/宛先参照・配置・状態と配送同意/時刻、Deliver scopeとVariant・SourceSpan・versioned capability permit・成功EngineExecutionを一致させる配送preflight、session-scoped冪等claimの完全一致/Conflict/並行予約、ページ間event cursorのsequence・初回Accepted・時刻・終端/配送順、厳密版能力ゲート、能力次元と許可集合の完全一致、アクティブsession/request/input各版、SourceAsset/Span／実行／全訳先結果参照、request時間窓、未対応・期限・取消時の実行前停止を検査する。両者とも限定した契約QCであり、IANA registry有効性、エンジン対応、実配信、永続冪等台帳/event log、再起動復旧、射影全同値、認証、永続同意、MINIDORA実行・実訳、実行中停止、サービス統合、対象端末QAの証拠ではない。
+Python 23件（JSON Schema/OpenAPI 19件、能力ゲート4件）は射影形状、BCP 47タグ形式、TranslationRequestのnullable項目・整数幅・Unicodeキー長・参照重複、未対応結果の無訳文条件、event typeごとのvariant/result/artifact参照、SourceAssetの参照/同意/metadata条件、SourceSpanのtagged payload/position/null条件、EngineExecutionの能力証拠/fingerprint/終端対応、TranslationResultのnullable fieldとstatus別完了・失敗条件、TranslationVariantの暫定／確定状態条件、DeliveryArtifactのpayload/宛先/配置参照と配送状態/同意/時刻条件、能力ゲートを検査する。Rust 39件は論理record、BCP 47構文・正規化、不正言語タグ、同意の主体/対象/用途/期限/撤回と重複grant ID拒否、SourceAssetの同意/fingerprint/metadata/参照長、SourceSpanのpayload/position/観測元、EngineExecutionの能力証拠/版一致/fingerprint/終端対応、TranslationResultの進行・終端状態とnullable evidence/失敗コード境界、TranslationVariantの暫定状態と確定実行証跡、DeliveryArtifactのpayload/宛先参照・配置・状態と配送同意/時刻、Deliver scopeとVariant・SourceSpan・versioned capability permit・成功EngineExecutionを一致させる配送preflight、session-scoped冪等claimの完全一致/Conflict/並行予約、ページ間event cursorのsequence・初回Accepted・時刻・終端/配送順、厳密版能力ゲート、能力次元と許可集合の完全一致、アクティブsession/request/input各版、SourceAsset/Span／実行／全訳先結果参照、request時間窓、nullable同意/期限/取消とrevision/attempt/key境界、未対応・期限・取消時の実行前停止を検査する。両者とも限定した契約QCであり、IANA registry有効性、エンジン対応、実配信、永続冪等台帳/event log、再起動復旧、射影全同値、認証、永続同意、MINIDORA実行・実訳、実行中停止、サービス統合、対象端末QAの証拠ではない。
 
 実訳受入をPASSへ上げるには、新たに許可されたMINIDORA版の固定commit、公開API、対象言語ペア、文脈、停止／取消の実測、全件証跡が必要。別エンジンの出力や作用注入例で代替しない。
