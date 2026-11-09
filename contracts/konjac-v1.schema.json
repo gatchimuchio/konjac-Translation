@@ -360,20 +360,35 @@
         {
           "properties": {
             "record_type": {"const": "DeliveryArtifact"},
-            "request_id": {"$ref": "#/$defs/id"},
             "variant_id": {"$ref": "#/$defs/id"},
             "format": {"enum": ["text", "srt", "vtt", "audio", "document", "overlay", "api"]},
-            "destination": {"type": "string", "minLength": 1, "maxLength": 1024},
             "payload_ref": {"$ref": "#/$defs/reference"},
-            "status": {"enum": ["READY", "DELIVERING", "DELIVERED", "DELIVERY_UNKNOWN", "FAILED", "CANCELLED"]},
-            "delivery_consent_id": {"$ref": "#/$defs/id"},
-            "delivered_at": {"$ref": "#/$defs/timestamp"},
-            "diagnostic_code": {"type": "string", "maxLength": 128}
+            "destination": {"$ref": "#/$defs/reference"},
+            "position": {"anyOf": [{"$ref": "#/$defs/position"}, {"type": "null"}]},
+            "delivery_consent_id": {"type": ["string", "null"], "format": "uuid"},
+            "status": {"enum": ["PREPARED", "AUTHORIZED", "DELIVERED", "DELIVERY_FAILED", "DELIVERY_UNKNOWN", "REVOKED"]},
+            "delivered_at": {"type": ["string", "null"], "format": "date-time"},
+            "audit_id": {"$ref": "#/$defs/id"}
           },
-          "required": ["request_id", "variant_id", "format", "destination", "payload_ref", "status"]
+          "required": ["variant_id", "format", "payload_ref", "destination", "position", "delivery_consent_id", "status", "delivered_at", "audit_id"]
         },
-        {"if": {"properties": {"status": {"const": "DELIVERED"}}, "required": ["status"]}, "then": {"required": ["delivery_consent_id", "delivered_at"]}},
-        {"if": {"properties": {"status": {"const": "DELIVERY_UNKNOWN"}}, "required": ["status"]}, "then": {"required": ["delivery_consent_id"]}}
+        {
+          "if": {"properties": {"status": {"const": "DELIVERED"}}, "required": ["status"]},
+          "then": {
+            "properties": {
+              "delivery_consent_id": {"type": "string", "format": "uuid"},
+              "delivered_at": {"$ref": "#/$defs/timestamp"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"status": {"enum": ["AUTHORIZED", "DELIVERED", "DELIVERY_UNKNOWN", "REVOKED"]}}, "required": ["status"]},
+          "then": {"properties": {"delivery_consent_id": {"type": "string", "format": "uuid"}}}
+        },
+        {
+          "if": {"properties": {"status": {"not": {"const": "DELIVERED"}}}, "required": ["status"]},
+          "then": {"properties": {"delivered_at": {"type": "null"}}}
+        }
       ],
       "unevaluatedProperties": false
     },

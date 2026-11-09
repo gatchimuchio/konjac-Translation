@@ -32,7 +32,7 @@ MINIDORAの厳密な配布版／commit、公開入口、要求ID、能力照会�
 
 ### `DeliveryArtifact`
 
-テキスト、音声、字幕、文書、重畳、API等の出力形式、元Variant、配置・時刻、宛先、別個の配送許可、実際の配送状態・時刻、監査IDを持つ。表示許可、保存許可、外部配送許可を同一視しない。
+テキスト、音声、字幕、文書、重畳、API等の出力形式、実体と宛先を指す`ContentReference`、元Variant、任意の`SourcePosition`による配置・時刻、別個の配送許可、実際の配送状態・時刻、監査IDを持つ。表示許可、保存許可、外部配送許可を同一視しない。
 
 ## 2. 補助レコードと対応関係
 
@@ -57,7 +57,7 @@ Rust共通基盤は本論理モデルの第一実装で、[`crates/konjac-core`]
 
 `execute_guarded_at`は期限・取消時刻を比較し、先に成立した終端理由があれば能力照会前に停止する。入力時刻の矛盾も拒否するが、実行中の取消伝播・停止確認は実装していない。
 
-現在確認した射影差分：`DeliveryArtifact`の状態と配送許可、`TranslationVariant`とEngineExecutionの参照結果一致、記録ごとの版・状態対応、撤回・再起動後の復旧・出力消去が残る。TranslationVariantは本文なしの暫定状態を許し、暫定本文がある場合と確定状態には実行証跡を要求し、失敗状態の本文を禁止する条件をJSON射影にも反映した。`SourceAsset`の元fingerprint、owner/rights/content参照、取得同意、時間基準、metadataはJSON射影とRust検査を照合した。`SourceSpan`のtagged payload/position union、観測元、nullable fieldsもRustとJSONに揃えたが、時間区間の大小と画像矩形の包含条件はRust実行時検査が必要。`EngineExecution`に版付き能力証拠、入力／応答fingerprintと終端対応条件を反映し、版一致・時刻順のような複数フィールド条件はRust実行時で検査する。要求のsession/request revisionとexecution modeもJSON射影へ追加済みだが、Rustとの全フィールド／全状態同値は未検証。現行JSONテストPASSは射影の局所検査であり、論理契約全体の適合証明ではない。
+現在確認した残差：`TranslationVariant`とEngineExecutionの参照結果一致、DeliveryArtifactとVariant／配送許可／監査記録の相互参照、記録ごとの版・状態対応、撤回・再起動後の復旧・出力消去が残る。DeliveryArtifactのpayload・宛先・配置参照、配送状態、同意ID、配送時刻、監査IDはRustとJSONの局所射影を照合したが、保存先の実体確認や実配送は未実装。TranslationVariantは本文なしの暫定状態を許し、暫定本文がある場合と確定状態には実行証跡を要求し、失敗状態の本文を禁止する条件をJSON射影にも反映した。`SourceAsset`の元fingerprint、owner/rights/content参照、取得同意、時間基準、metadataはJSON射影とRust検査を照合した。`SourceSpan`のtagged payload/position union、観測元、nullable fieldsもRustとJSONに揃えたが、時間区間の大小と画像矩形の包含条件はRust実行時検査が必要。`EngineExecution`に版付き能力証拠、入力／応答fingerprintと終端対応条件を反映し、版一致・時刻順のような複数フィールド条件はRust実行時で検査する。要求のsession/request revisionとexecution modeもJSON射影へ追加済みだが、Rustとの全フィールド／全状態同値は未検証。現行JSONテストPASSは射影の局所検査であり、論理契約全体の適合証明ではない。
 
 ## 5. 実装交換・AICompiler移管
 

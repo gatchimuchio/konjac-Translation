@@ -111,6 +111,13 @@ mod tests {
             created_at: at(1),
             variant_id: Uuid::from_u128(51),
             format: crate::ArtifactFormat::Text,
+            payload_ref: crate::ContentReference {
+                kind: ReferenceKind::Local,
+                key: "artifact/result-1".into(),
+                media_type: Some("text/plain".into()),
+                sha256: None,
+                size_bytes: None,
+            },
             destination: crate::ContentReference {
                 kind: ReferenceKind::Remote,
                 key: "recipient:example".into(),
@@ -118,6 +125,7 @@ mod tests {
                 sha256: None,
                 size_bytes: None,
             },
+            position: None,
             delivery_consent_id: Some(grant_id),
             status: DeliveryStatus::Authorized,
             delivered_at: None,

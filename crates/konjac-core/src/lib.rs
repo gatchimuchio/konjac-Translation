@@ -1225,7 +1225,9 @@ pub enum DeliveryStatus {
 define_record!(DeliveryArtifact {
     pub variant_id: Uuid,
     pub format: ArtifactFormat,
+    pub payload_ref: ContentReference,
     pub destination: ContentReference,
+    pub position: Option<SourcePosition>,
     pub delivery_consent_id: Option<Uuid>,
     pub status: DeliveryStatus,
     pub delivered_at: Option<DateTime<Utc>>,
@@ -1252,7 +1254,11 @@ impl DeliveryArtifact {
         {
             return Err(ContractError::DeliveryNeedsAuthorization);
         }
+        self.payload_ref.validate()?;
         self.destination.validate()?;
+        if let Some(position) = &self.position {
+            position.validate()?;
+        }
         Ok(())
     }
 }
@@ -1963,6 +1969,13 @@ mod tests {
             created_at: at(1),
             variant_id: Uuid::from_u128(6),
             format: ArtifactFormat::Text,
+            payload_ref: ContentReference {
+                kind: ReferenceKind::Local,
+                key: "artifact/result-1".into(),
+                media_type: Some("text/plain".into()),
+                sha256: None,
+                size_bytes: None,
+            },
             destination: ContentReference {
                 kind: ReferenceKind::Remote,
                 key: "recipient:example".into(),
@@ -1970,6 +1983,7 @@ mod tests {
                 sha256: None,
                 size_bytes: None,
             },
+            position: None,
             delivery_consent_id: None,
             status: DeliveryStatus::Delivered,
             delivered_at: Some(at(2)),
@@ -1978,6 +1992,87 @@ mod tests {
         assert_eq!(
             artifact.validate(),
             Err(ContractError::DeliveryNeedsAuthorization)
+        );
+    }
+
+    #[test]
+    fn delivery_artifact_validates_payload_position_and_logical_statuses() {
+        let mut artifact = DeliveryArtifact {
+            contract_version: LOGICAL_CONTRACT_VERSION.into(),
+            record_id: Uuid::from_u128(70),
+            created_at: at(1),
+            variant_id: Uuid::from_u128(71),
+            format: ArtifactFormat::Vtt,
+            payload_ref: ContentReference {
+                kind: ReferenceKind::Local,
+                key: "artifact/captions.vtt".into(),
+                media_type: Some("text/vtt".into()),
+                sha256: None,
+                size_bytes: Some(10),
+            },
+            destination: ContentReference {
+                kind: ReferenceKind::Remote,
+                key: "recipient:meeting-1".into(),
+                media_type: None,
+                sha256: None,
+                size_bytes: None,
+            },
+            position: Some(SourcePosition::VideoTime {
+                start_ms: 100,
+                end_ms: 500,
+            }),
+            delivery_consent_id: None,
+            status: DeliveryStatus::Prepared,
+            delivered_at: None,
+            audit_id: Uuid::from_u128(72),
+        };
+        assert_eq!(artifact.validate(), Ok(()));
+
+        let wire = serde_json::to_value(LogicalRecord::DeliveryArtifact(artifact.clone())).unwrap();
+        assert_eq!(wire["status"], "PREPARED");
+        assert_eq!(wire["destination"]["kind"], "remote");
+        assert_eq!(wire["payload_ref"]["key"], "artifact/captions.vtt");
+        assert_eq!(wire["position"]["kind"], "video_time");
+        assert!(wire["delivery_consent_id"].is_null());
+        assert!(wire["delivered_at"].is_null());
+        assert_eq!(wire["audit_id"], Uuid::from_u128(72).to_string());
+
+        let valid_payload_ref = artifact.payload_ref.clone();
+        artifact.payload_ref.key.clear();
+        assert_eq!(artifact.validate(), Err(ContractError::InvalidReference));
+        artifact.payload_ref = valid_payload_ref;
+
+        let valid_destination = artifact.destination.clone();
+        artifact.destination.key.clear();
+        assert_eq!(artifact.validate(), Err(ContractError::InvalidReference));
+        artifact.destination = valid_destination;
+
+        artifact.status = DeliveryStatus::Authorized;
+        assert_eq!(
+            artifact.validate(),
+            Err(ContractError::DeliveryNeedsAuthorization)
+        );
+        artifact.delivery_consent_id = Some(Uuid::from_u128(73));
+        assert_eq!(artifact.validate(), Ok(()));
+
+        artifact.status = DeliveryStatus::Delivered;
+        assert_eq!(
+            artifact.validate(),
+            Err(ContractError::DeliveryNeedsAuthorization)
+        );
+        artifact.delivered_at = Some(at(2));
+        assert_eq!(artifact.validate(), Ok(()));
+
+        artifact.status = DeliveryStatus::DeliveryUnknown;
+        artifact.delivered_at = None;
+        assert_eq!(artifact.validate(), Ok(()));
+        artifact.position = Some(SourcePosition::VideoTime {
+            start_ms: 500,
+            end_ms: 100,
+        });
+        assert_eq!(
+            artifact.validate(),
+            Err(ContractError::InvalidSourcePosition)
         );
     }
 }

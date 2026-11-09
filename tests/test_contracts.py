@@ -35,7 +35,7 @@ SAMPLES = [
     record("EngineExecution", "10000000-0000-4000-8000-000000000007", request_id="10000000-0000-4000-8000-000000000006", engine_name="MINIDORA-BETA", engine_version="0.6.0b1", engine_revision="fe5822de63644bdaea9208a98046f71684dffae2", public_entry_point="minidora.engine_beta.ミニドラβ実行機", capability={"capability_id": "translation.text", "state": "UNSUPPORTED", "engine_version": "0.6.0b1", "engine_revision": "fe5822de63644bdaea9208a98046f71684dffae2", "reason_code": "NO_PUBLIC_TRANSLATION_OPERATION", "observed_at": STAMP}, input_fingerprint="0" * 64, response_fingerprint=None, outcome="UNSUPPORTED", started_at=STAMP, finished_at=STAMP, diagnostic_code="NO_PUBLIC_TRANSLATION_OPERATION", trace_ref=None),
     record("TranslationVariant", "10000000-0000-4000-8000-000000000008", request_id="10000000-0000-4000-8000-000000000006", source_span_id="10000000-0000-4000-8000-000000000005", target_language="en", revision=1, status="UNSUPPORTED", text=None, engine_execution_id=None, provenance_ref=None, speaker_id=None, position=None, produced_at=STAMP),
     record("TranslationResult", "10000000-0000-4000-8000-000000000009", request_id="10000000-0000-4000-8000-000000000006", request_revision=1, status="UNSUPPORTED", variant_ids=[], engine_execution_ids=["10000000-0000-4000-8000-000000000007"], failure_code="CAPABILITY_NOT_EXPOSED", completed_at=STAMP),
-    record("DeliveryArtifact", "10000000-0000-4000-8000-000000000010", request_id="10000000-0000-4000-8000-000000000006", variant_id="10000000-0000-4000-8000-000000000008", format="text", destination="local-view", payload_ref={"kind": "local", "key": "result/10000000-0000-4000-8000-000000000009"}, status="READY"),
+    record("DeliveryArtifact", "10000000-0000-4000-8000-000000000010", variant_id="10000000-0000-4000-8000-000000000008", format="text", payload_ref={"kind": "local", "key": "result/10000000-0000-4000-8000-000000000009"}, destination={"kind": "local", "key": "local-view"}, position=None, delivery_consent_id=None, status="PREPARED", delivered_at=None, audit_id="10000000-0000-4000-8000-000000000014"),
     record("TranslationEvent", "10000000-0000-4000-8000-000000000011", request_id="10000000-0000-4000-8000-000000000006", sequence=1, event_type="unsupported", result_id="10000000-0000-4000-8000-000000000009", occurred_at=STAMP),
     record("ConsentRevocation", "10000000-0000-4000-8000-000000000012", grant_id="10000000-0000-4000-8000-000000000001", revoked_by="owner", revoked_at=STAMP, reason_code="USER_REQUEST"),
 ]
@@ -193,6 +193,45 @@ class ContractSchemaTests(unittest.TestCase):
         VALIDATOR.validate(variant)
         variant["engine_execution_id"] = None
         self.assertFalse(VALIDATOR.is_valid(variant))
+
+    def test_delivery_artifact_matches_logical_states_and_references(self) -> None:
+        artifact = deepcopy(SAMPLES[8])
+        VALIDATOR.validate(artifact)
+
+        artifact["status"] = "AUTHORIZED"
+        self.assertFalse(VALIDATOR.is_valid(artifact))
+        artifact["delivery_consent_id"] = "10000000-0000-4000-8000-000000000001"
+        VALIDATOR.validate(artifact)
+
+        artifact["status"] = "DELIVERED"
+        self.assertFalse(VALIDATOR.is_valid(artifact))
+        artifact["delivered_at"] = STAMP
+        VALIDATOR.validate(artifact)
+
+        artifact["status"] = "DELIVERY_UNKNOWN"
+        artifact["delivered_at"] = None
+        VALIDATOR.validate(artifact)
+        artifact["delivery_consent_id"] = None
+        self.assertFalse(VALIDATOR.is_valid(artifact))
+
+        artifact["status"] = "DELIVERY_FAILED"
+        self.assertTrue(VALIDATOR.is_valid(artifact))
+        artifact["delivered_at"] = STAMP
+        self.assertFalse(VALIDATOR.is_valid(artifact))
+
+        artifact["status"] = "PREPARED"
+        artifact["delivered_at"] = None
+        artifact["destination"] = "local-view"
+        self.assertFalse(VALIDATOR.is_valid(artifact))
+        artifact["destination"] = {"kind": "local", "key": "local-view"}
+        artifact["payload_ref"] = "opaque"
+        self.assertFalse(VALIDATOR.is_valid(artifact))
+        artifact["payload_ref"] = {"kind": "local", "key": "result/10000000-0000-4000-8000-000000000009"}
+        artifact["status"] = "READY"
+        self.assertFalse(VALIDATOR.is_valid(artifact))
+        artifact["status"] = "PREPARED"
+        artifact.pop("audit_id")
+        self.assertFalse(VALIDATOR.is_valid(artifact))
 
     def test_language_tags_follow_bcp47_subtag_order(self) -> None:
         session = deepcopy(SAMPLES[2])
