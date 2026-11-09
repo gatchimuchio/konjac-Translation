@@ -312,8 +312,15 @@ pub struct ContentReference {
 
 impl ContentReference {
     pub fn validate(&self) -> Result<(), ContractError> {
-        if self.key.is_empty() || self.media_type.as_deref().is_some_and(str::is_empty) {
-            return Err(ContractError::EmptyRequiredField);
+        if self.key.is_empty() || self.key.chars().count() > 1024 {
+            return Err(ContractError::InvalidReference);
+        }
+        if self
+            .media_type
+            .as_deref()
+            .is_some_and(|media_type| media_type.is_empty() || media_type.chars().count() > 127)
+        {
+            return Err(ContractError::InvalidReference);
         }
         validate_optional_sha256(self.sha256.as_deref())
     }
@@ -343,6 +350,14 @@ define_record!(SourceAsset {
 impl SourceAsset {
     pub fn validate(&self) -> Result<(), ContractError> {
         validate_base(&self.contract_version, &self.media_type)?;
+        if self.media_type.chars().count() > 127
+            || self
+                .metadata
+                .values()
+                .any(|value| value.is_array() || value.is_object())
+        {
+            return Err(ContractError::InvalidSourceAsset);
+        }
         if matches!(
             self.origin,
             InputOrigin::Camera | InputOrigin::Microphone | InputOrigin::SystemAudio
@@ -1299,6 +1314,10 @@ pub enum ContractError {
     InvalidSession,
     #[error("source span fields are incomplete or inconsistent")]
     InvalidSourceSpan,
+    #[error("source asset fields or metadata values are invalid")]
+    InvalidSourceAsset,
+    #[error("content reference fields are incomplete or exceed their limits")]
+    InvalidReference,
     #[error("source confidence must be finite and between zero and one")]
     InvalidConfidence,
     #[error("source media position is invalid")]
@@ -1436,6 +1455,65 @@ mod tests {
             diagnostic_code: Some("NO_PUBLIC_TRANSLATION_OPERATION".into()),
             trace_ref: None,
         }
+    }
+
+    fn source_asset() -> SourceAsset {
+        SourceAsset {
+            contract_version: LOGICAL_CONTRACT_VERSION.into(),
+            record_id: Uuid::from_u128(40),
+            created_at: at(1),
+            media_kind: MediaKind::Image,
+            origin: InputOrigin::Camera,
+            media_type: "image/png".into(),
+            content_ref: Some(ContentReference {
+                kind: ReferenceKind::Local,
+                key: "asset/40".into(),
+                media_type: Some("image/png".into()),
+                sha256: None,
+                size_bytes: Some(128),
+            }),
+            original_fingerprint: Some("a".repeat(64)),
+            owner_ref: Some(ContentReference {
+                kind: ReferenceKind::Local,
+                key: "owner/40".into(),
+                media_type: None,
+                sha256: None,
+                size_bytes: None,
+            }),
+            rights_ref: None,
+            capture_consent_id: Some(Uuid::from_u128(41)),
+            time_basis: Some("unix_ms_from_capture_start".into()),
+            retention: RetentionPolicy::Session,
+            metadata: BTreeMap::from([("device".into(), serde_json::json!("camera"))]),
+        }
+    }
+
+    #[test]
+    fn source_asset_limits_and_scalar_metadata_are_validated() {
+        let mut asset = source_asset();
+        assert_eq!(asset.validate(), Ok(()));
+
+        asset.capture_consent_id = None;
+        assert_eq!(asset.validate(), Err(ContractError::MissingCaptureConsent));
+
+        asset = source_asset();
+        asset.metadata.insert(
+            "nested".into(),
+            serde_json::json!({"raw_payload": "must not be metadata"}),
+        );
+        assert_eq!(asset.validate(), Err(ContractError::InvalidSourceAsset));
+
+        asset = source_asset();
+        asset.media_type = "x".repeat(128);
+        assert_eq!(asset.validate(), Err(ContractError::InvalidSourceAsset));
+
+        asset = source_asset();
+        asset.original_fingerprint = Some("A".repeat(64));
+        assert_eq!(asset.validate(), Err(ContractError::InvalidSha256));
+
+        asset = source_asset();
+        asset.content_ref.as_mut().unwrap().key = "x".repeat(1025);
+        assert_eq!(asset.validate(), Err(ContractError::InvalidReference));
     }
 
     #[test]

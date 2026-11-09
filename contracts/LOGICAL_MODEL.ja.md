@@ -57,7 +57,7 @@ Rust共通基盤は本論理モデルの第一実装で、[`crates/konjac-core`]
 
 `execute_guarded_at`は期限・取消時刻を比較し、先に成立した終端理由があれば能力照会前に停止する。入力時刻の矛盾も拒否するが、実行中の取消伝播・停止確認は実装していない。
 
-現在確認した射影差分：`SourceAsset`の権利・元指紋・時刻基準、`SourceSpan`のpayload形状、`EngineExecution`の能力状態・照会時刻・入力／応答指紋、`TranslationVariant`／`DeliveryArtifact`の状態と配送許可、記録ごとの版・状態対応、撤回・再起動後の復旧・出力消去が残る。要求のsession/request revisionとexecution modeはJSON射影へ追加したが、Rustとの全フィールド／全状態同値は未検証。現行JSONテストPASSは射影の局所検査であり、論理契約全体の適合証明ではない。
+現在確認した射影差分：`SourceSpan`のpayload形状、`EngineExecution`の能力状態・照会時刻・入力／応答指紋、`TranslationVariant`／`DeliveryArtifact`の状態と配送許可、記録ごとの版・状態対応、撤回・再起動後の復旧・出力消去が残る。`SourceAsset`の元fingerprint、owner/rights/content参照、取得同意、時間基準、metadataはJSON射影とRust検査を照合した。要求のsession/request revisionとexecution modeもJSON射影へ追加済みだが、Rustとの全フィールド／全状態同値は未検証。現行JSONテストPASSは射影の局所検査であり、論理契約全体の適合証明ではない。
 
 ## 5. 実装交換・AICompiler移管
 

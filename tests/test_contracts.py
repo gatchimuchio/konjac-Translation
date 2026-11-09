@@ -28,7 +28,7 @@ def record(record_type: str, record_id: str, **fields: object) -> dict[str, obje
 
 SAMPLES = [
     record("ConsentGrant", "10000000-0000-4000-8000-000000000001", principal_id="owner", scope="process_local", subject_ids=[], granted_at=STAMP),
-    record("SourceAsset", "10000000-0000-4000-8000-000000000002", media_kind="text", origin="user_input", media_type="text/plain", retention="ephemeral"),
+    record("SourceAsset", "10000000-0000-4000-8000-000000000002", media_kind="text", origin="user_input", media_type="text/plain", retention="ephemeral", metadata={}),
     record("TranslationSession", "10000000-0000-4000-8000-000000000003", revision=1, status="active", source_language="ja", target_languages=["en"], participants=[{"participant_id": "10000000-0000-4000-8000-000000000004", "role": "owner", "consent_grant_ids": []}], context_refs=[], terminology_refs=[], processing_location="local_only", consent_grant_ids=[], retention="ephemeral"),
     record("SourceSpan", "10000000-0000-4000-8000-000000000005", asset_id="10000000-0000-4000-8000-000000000002", session_id="10000000-0000-4000-8000-000000000003", revision=1, source_text="こんにちは", source_language="ja", observation_origin="typed"),
     record("TranslationRequest", "10000000-0000-4000-8000-000000000006", session_id="10000000-0000-4000-8000-000000000003", session_revision=1, revision=1, source_span_ids=["10000000-0000-4000-8000-000000000005"], input_revision=1, target_languages=["en"], context_refs=[], terminology_refs=[], requested_outputs=["text"], execution_mode="batch", processing_location="local_only", idempotency_key="konjac-request-0001", attempt=1),
@@ -76,6 +76,53 @@ class ContractSchemaTests(unittest.TestCase):
                 VALIDATOR.validate(event)
                 event.pop(reference)
                 self.assertFalse(VALIDATOR.is_valid(event))
+
+    def test_source_asset_projection_matches_logical_references(self) -> None:
+        asset = deepcopy(SAMPLES[1])
+        asset.update(
+            {
+                "content_ref": {
+                    "kind": "local",
+                    "key": "asset/source-1",
+                    "media_type": "image/png",
+                    "sha256": None,
+                    "size_bytes": 128,
+                },
+                "origin": "camera",
+                "original_fingerprint": "a" * 64,
+                "owner_ref": {"kind": "local", "key": "owner/1"},
+                "rights_ref": None,
+                "capture_consent_id": "10000000-0000-4000-8000-000000000014",
+                "time_basis": "unix_ms_from_capture_start",
+            }
+        )
+        VALIDATOR.validate(asset)
+
+        asset["capture_consent_id"] = None
+        self.assertFalse(VALIDATOR.is_valid(asset))
+        asset["capture_consent_id"] = "10000000-0000-4000-8000-000000000014"
+        asset["content_ref"] = None
+        self.assertTrue(VALIDATOR.is_valid(asset))
+        for unsupported_field in ("content_digest", "source_uri", "attribution"):
+            incompatible = deepcopy(asset)
+            incompatible[unsupported_field] = "not in the logical SourceAsset"
+            with self.subTest(field=unsupported_field):
+                self.assertFalse(VALIDATOR.is_valid(incompatible))
+
+        asset["metadata"] = {"nested": {"raw": "not scalar metadata"}}
+        self.assertFalse(VALIDATOR.is_valid(asset))
+
+        asset["metadata"] = {}
+        asset["original_fingerprint"] = "A" * 64
+        self.assertFalse(VALIDATOR.is_valid(asset))
+
+        oversized_reference = deepcopy(SAMPLES[1])
+        oversized_reference["content_ref"] = {
+            "kind": "local",
+            "key": "asset/source-1",
+            "size_bytes": 18446744073709551616,
+        }
+        self.assertFalse(VALIDATOR.is_valid(oversized_reference))
 
     def test_language_tags_follow_bcp47_subtag_order(self) -> None:
         session = deepcopy(SAMPLES[2])

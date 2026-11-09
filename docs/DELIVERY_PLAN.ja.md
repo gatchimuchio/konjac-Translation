@@ -14,7 +14,7 @@
 | G2 実装契約 | 論理モデル、型、状態、EnginePort、権限、保存、交換、構築/配布案を全W/U/E/Aへ接続 | NOT RUN | Rustで主要型、要求版・span・結果参照整合、言語ペア/文脈/モード別能力許可を実装。永続化・全状態・全索引対応とJSON/OpenAPI射影同等性は未完了。 |
 | G3 全数BUILD | W01–W12の全媒体・全環境構成を実装し、ビルド可能な成果物を作る | NOT RUN | 現行JSON契約・Python診断QCは部分準備。製品ランタイム・OSアダプターは未施工。 |
 | G4 全線結線 | 全入力から能力境界、結果/停止、表示・保存・配送まで共通契約で結線 | NOT RUN | 実訳経路はMINIDORA公開能力未成立のためBLOCKED。外側構成も未結線。 |
-| G5 局所QC | 全構成の型、権限、失敗、版、永続化、再試行、競合を検査 | NOT RUN | Python 17件は契約射影・BCP 47形式・イベント参照要件・能力ゲート、Rust 32件は共通コア境界の限定検査であり、G5受入ではない。 |
+| G5 局所QC | 全構成の型、権限、失敗、版、永続化、再試行、競合を検査 | NOT RUN | Python 18件は契約射影・BCP 47形式・イベント/SourceAsset参照要件・能力ゲート、Rust 33件は共通コア境界の限定検査であり、G5受入ではない。 |
 | G6 全体QC | 全入力→中核→出力、A01–A07、U01–U12の横断経路・異常系を検査 | NOT RUN | 製品全線が未結線。 |
 | G7 環境別QA | E01–E06と該当ブラウザ/ABI/権限/配布条件を仮想・自動検証 | NOT RUN | E01 Windows、E02 Linux、E03 macOS、E04 Android、E05 iOS、E06 WebのQAは全てNOT RUN。実機未確認。 |
 | G8 Owner最終判定 | Ownerが施工証拠、実訳、品質、権利、残余リスクを独立検収 | NOT RUN | CodexはOwner受入・公開判断を代行しない。 |
@@ -25,7 +25,7 @@ G0–G2を閉じてから全体BUILDへ進む。W行ごとに完成判定を作�
 
 | ID | 全体責務 | 現在の証拠・不足 | 状態 |
 |---|---|---|---|
-| W01 | 共通論理契約・型・版 | Rustで7中核record、BCP 47 well-formedタグ構文、ConsentGrant/Revocation、TranslationResult/Eventと主要不変条件・session/request/input revision、SourceAsset/Span/実行/結果参照、能力許可整合を実装。IANA registry検証、JSON/OpenAPI全属性射影と永続版整合は未完了。 | NOT RUN |
+| W01 | 共通論理契約・型・版 | Rustで7中核record、BCP 47 well-formedタグ構文、ConsentGrant/Revocation、TranslationResult/Eventと主要不変条件・session/request/input revision、SourceAsset/Span/実行/結果参照、能力許可整合を実装。SourceAssetのfingerprint/所有者・権利参照/時間基準、取得同意、metadataと参照制約をJSON射影とRustで照合。IANA registry検証、JSON/OpenAPI全属性射影と永続版整合は未完了。 | NOT RUN |
 | W02 | 権限・同意・信頼・原文保全・監査 | ConsentRegistryで主体/範囲/対象/期限/撤回を評価し、grant ID重複は拒否。認証済みAuthorizationContextは媒体取得と処理grantを能力照会前に検査し、DeliveryPermitはDeliver scopeを対象artifactに束縛して使用時再検証する。OS権限、永続台帳、一括撤回/競合、暗号化、削除、監査保管、復旧は未実装。 | NOT RUN |
 | W03 | MINIDORA公開境界ブリッジ | Python監査済み版プロファイルとRust EnginePort/能力ゲート契約あり。`execute_guarded`は期限・取消を確認し、全照会SUPPORTEDのときだけ単一Portを呼ぶ。許可は原言語・訳先・文脈要否・batch/streamingと厳密版証拠を束縛する。凍結0.6.0b1公開APIへの実行アダプター・実行中取消写像なし。翻訳はBLOCKED。 | BLOCKED |
 | W04 | テキスト・Web・文書取得 | 仕様と適用行列のみ。テキストUI、DOM、PDF/Office取得は未実装。 | NOT RUN |
@@ -66,7 +66,7 @@ G0–G2を閉じてから全体BUILDへ進む。W行ごとに完成判定を作�
 
 - 構造受入A01–A07、製品受入U01–U12の定義・段階状態は[受入規定](ACCEPTANCE.ja.md)に保持する。定義PASSは実装PASSではない。
 - 全72件のU×E適用行列は施工対象の索引であり、各セルの実装・結線・QC・QA・Owner受入は未実施。
-- 2026-11-09にPython 3.12の契約/OpenAPI/BCP 47/イベントwire参照/能力ゲート17件とRust 1.99.1の論理record/BCP 47/同意・権限/配送preflight/並行冪等claim/EnginePort/セッション・入力・期限・取消・結果/ページ間イベントcursor境界32件を現作業ツリーで実行し、双方PASS。Rust clippy（warningをerror化）とformat checkもPASS。これらはG5の全W局所QCではない。
+- 2026-11-09にPython 3.12の契約/OpenAPI/BCP 47/イベントwire参照/SourceAsset射影/能力ゲート18件とRust 1.99.1の論理record/BCP 47/SourceAsset境界/同意・権限/配送preflight/並行冪等claim/EnginePort/セッション・入力・期限・取消・結果/ページ間イベントcursor境界33件を現作業ツリーで実行し、双方PASS。Rust clippy（warningをerror化）とformat checkもPASS。これらはG5の全W局所QCではない。
 - 受入結果の証跡にはHEAD、依存版、OS/CPU/ABI、入力識別、手順、期待値、観測値、未確認範囲を記録する。
 - 全体実装完了、全体品質成立、MINIDORA実訳成立、製品受入、公開許可は異なる終端である。
 

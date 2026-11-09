@@ -31,9 +31,9 @@
       "properties": {
         "kind": {"enum": ["local", "remote"]},
         "key": {"type": "string", "minLength": 1, "maxLength": 1024},
-        "media_type": {"type": "string", "minLength": 1, "maxLength": 127},
-        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-        "size_bytes": {"type": "integer", "minimum": 0}
+        "media_type": {"type": ["string", "null"], "minLength": 1, "maxLength": 127},
+        "sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+        "size_bytes": {"type": ["integer", "null"], "minimum": 0, "maximum": 18446744073709551615}
       },
       "required": ["kind", "key"],
       "additionalProperties": false
@@ -92,15 +92,19 @@
             "media_kind": {"enum": ["text", "audio", "image", "video", "document", "web", "chat", "meeting", "api"]},
             "origin": {"enum": ["user_input", "file_picker", "camera", "microphone", "system_audio", "browser_selection", "approved_connector", "api_client"]},
             "media_type": {"type": "string", "minLength": 1, "maxLength": 127},
-            "content_ref": {"$ref": "#/$defs/reference"},
-            "content_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-            "source_uri": {"type": "string", "format": "uri", "maxLength": 4096},
-            "attribution": {"type": "string", "maxLength": 2048},
-            "capture_consent_id": {"$ref": "#/$defs/id"},
+            "content_ref": {"anyOf": [{"$ref": "#/$defs/reference"}, {"type": "null"}]},
+            "original_fingerprint": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+            "owner_ref": {"anyOf": [{"$ref": "#/$defs/reference"}, {"type": "null"}]},
+            "rights_ref": {"anyOf": [{"$ref": "#/$defs/reference"}, {"type": "null"}]},
+            "capture_consent_id": {"type": ["string", "null"], "format": "uuid"},
+            "time_basis": {"type": ["string", "null"]},
             "retention": {"enum": ["ephemeral", "session", "user_managed"]},
             "metadata": {"type": "object", "additionalProperties": {"type": ["string", "number", "integer", "boolean", "null"]}}
           },
-          "required": ["media_kind", "origin", "media_type", "retention"]
+          "required": ["media_kind", "origin", "media_type", "retention", "metadata"],
+          "allOf": [
+            {"if": {"properties": {"origin": {"enum": ["camera", "microphone", "system_audio"]}}, "required": ["origin"]}, "then": {"required": ["capture_consent_id"], "properties": {"capture_consent_id": {"$ref": "#/$defs/id"}}}}
+          ]
         }
       ],
       "unevaluatedProperties": false
