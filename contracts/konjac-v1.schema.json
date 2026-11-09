@@ -263,10 +263,24 @@
       ],
       "unevaluatedProperties": false
     },
+    "capabilityEvidence": {
+      "type": "object",
+      "properties": {
+        "capability_id": {"type": "string", "minLength": 1, "maxLength": 128},
+        "state": {"enum": ["SUPPORTED", "UNSUPPORTED", "SUSPEND"]},
+        "engine_version": {"type": "string", "minLength": 1, "maxLength": 128},
+        "engine_revision": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+        "reason_code": {"type": "string", "minLength": 1, "maxLength": 128},
+        "observed_at": {"$ref": "#/$defs/timestamp"}
+      },
+      "required": ["capability_id", "state", "engine_version", "engine_revision", "reason_code", "observed_at"],
+      "additionalProperties": false
+    },
     "EngineExecution": {
       "allOf": [
         {"$ref": "#/$defs/base"},
         {
+          "$comment": "Runtime validation additionally requires capability evidence to match the engine version/revision, finish time not to precede start time, and outcome to match the capability state.",
           "properties": {
             "record_type": {"const": "EngineExecution"},
             "request_id": {"$ref": "#/$defs/id"},
@@ -274,16 +288,21 @@
             "engine_version": {"type": "string", "minLength": 1, "maxLength": 128},
             "engine_revision": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
             "public_entry_point": {"type": "string", "minLength": 1, "maxLength": 256},
-            "capability_id": {"type": "string", "minLength": 1, "maxLength": 128},
+            "capability": {"$ref": "#/$defs/capabilityEvidence"},
+            "input_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+            "response_fingerprint": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
             "outcome": {"enum": ["COMPLETED", "UNSUPPORTED", "SUSPEND", "FAILED", "CANCELLED", "TIMED_OUT"]},
             "started_at": {"$ref": "#/$defs/timestamp"},
             "finished_at": {"$ref": "#/$defs/timestamp"},
-            "diagnostic_code": {"type": "string", "maxLength": 128},
-            "trace_ref": {"$ref": "#/$defs/reference"}
+            "diagnostic_code": {"type": ["string", "null"], "maxLength": 128},
+            "trace_ref": {"anyOf": [{"$ref": "#/$defs/reference"}, {"type": "null"}]}
           },
-          "required": ["request_id", "engine_name", "engine_version", "engine_revision", "public_entry_point", "capability_id", "outcome", "started_at"]
+          "required": ["request_id", "engine_name", "engine_version", "engine_revision", "public_entry_point", "capability", "input_fingerprint", "response_fingerprint", "outcome", "started_at", "finished_at"]
         },
-        {"if": {"properties": {"outcome": {"enum": ["COMPLETED", "UNSUPPORTED", "SUSPEND", "FAILED", "CANCELLED", "TIMED_OUT"]}}, "required": ["outcome"]}, "then": {"required": ["finished_at"]}}
+        {"if": {"properties": {"outcome": {"const": "COMPLETED"}}, "required": ["outcome"]}, "then": {"required": ["response_fingerprint"], "properties": {"response_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "capability": {"properties": {"state": {"const": "SUPPORTED"}}}}}},
+        {"if": {"properties": {"outcome": {"const": "UNSUPPORTED"}}, "required": ["outcome"]}, "then": {"properties": {"capability": {"properties": {"state": {"const": "UNSUPPORTED"}}}}}},
+        {"if": {"properties": {"outcome": {"const": "SUSPEND"}}, "required": ["outcome"]}, "then": {"properties": {"capability": {"properties": {"state": {"const": "SUSPEND"}}}}}},
+        {"if": {"properties": {"outcome": {"enum": ["FAILED", "CANCELLED", "TIMED_OUT"]}}, "required": ["outcome"]}, "then": {"properties": {"capability": {"properties": {"state": {"const": "SUPPORTED"}}}}}}
       ],
       "unevaluatedProperties": false
     },

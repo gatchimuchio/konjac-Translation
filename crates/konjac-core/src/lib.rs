@@ -793,8 +793,11 @@ pub struct CapabilityEvidence {
 impl CapabilityEvidence {
     pub fn validate(&self) -> Result<(), ContractError> {
         if self.capability_id.is_empty()
+            || self.capability_id.chars().count() > 128
             || self.engine_version.is_empty()
+            || self.engine_version.chars().count() > 128
             || self.reason_code.is_empty()
+            || self.reason_code.chars().count() > 128
         {
             return Err(ContractError::InvalidEngineExecution);
         }
@@ -833,12 +836,19 @@ impl EngineExecution {
     pub fn validate(&self) -> Result<(), ContractError> {
         validate_base(&self.contract_version, &self.engine_name)?;
         if self.engine_name.is_empty()
+            || self.engine_name.chars().count() > 128
             || self.engine_version.is_empty()
+            || self.engine_version.chars().count() > 128
             || self.engine_revision.is_empty()
             || self.public_entry_point.is_empty()
+            || self.public_entry_point.chars().count() > 256
             || self.capability.capability_id.is_empty()
             || self.capability.reason_code.is_empty()
             || self.input_fingerprint.is_empty()
+            || self
+                .diagnostic_code
+                .as_ref()
+                .is_some_and(|code| code.chars().count() > 128)
             || self.finished_at.is_none()
         {
             return Err(ContractError::InvalidEngineExecution);
@@ -1585,6 +1595,33 @@ mod tests {
             Err(ContractError::InvalidSourcePosition)
         );
         assert!(serde_json::from_str::<ObservationOrigin>("\"typed_fixture\"").is_err());
+    }
+
+    #[test]
+    fn engine_execution_preserves_nested_capability_evidence_on_the_wire() {
+        let execution = unsupported_execution();
+        assert_eq!(execution.validate(), Ok(()));
+
+        let wire = serde_json::to_value(&execution).unwrap();
+        assert_eq!(wire["capability"]["state"], "UNSUPPORTED");
+        assert_eq!(wire["input_fingerprint"], execution.input_fingerprint);
+        assert_eq!(
+            serde_json::from_value::<EngineExecution>(wire).unwrap(),
+            execution
+        );
+
+        let mut invalid = execution.clone();
+        invalid.engine_name = "x".repeat(129);
+        assert_eq!(
+            invalid.validate(),
+            Err(ContractError::InvalidEngineExecution)
+        );
+        invalid = execution;
+        invalid.capability.reason_code = "x".repeat(129);
+        assert_eq!(
+            invalid.validate(),
+            Err(ContractError::InvalidEngineExecution)
+        );
     }
 
     #[test]

@@ -1,7 +1,7 @@
 # こんにゃく翻訳 — 機能・製品受入規定
 
 - 初版：2026-11-04
-- 改訂：2026-11-09。Rust共通論理コア、JSON Schema／OpenAPI検査15件、Python能力ゲート検査4件、Rust境界検査34件を実装。TranslationEvent、SourceAsset、SourceSpanの射影条件をRust側の局所検証に整合。製品ランタイムと全経路は未実装。
+- 改訂：2026-11-09。Rust共通論理コア、JSON Schema／OpenAPI検査16件、Python能力ゲート検査4件、Rust境界検査35件を実装。TranslationEvent、SourceAsset、SourceSpan、EngineExecutionの射影条件をRust側の局所検証に整合。製品ランタイムと全経路は未実装。
 - 判定語：`PASS`＝条件・証拠が成立、`FAIL`＝不成立、`NOT RUN`＝未実施、`BLOCKED`＝事前依存が不成立、`SUSPEND`＝仕様上判断を停止。単純な「テストがある」を実証としない。
 
 ## 1. 構造に関する必須検査
@@ -84,11 +84,11 @@
 
 `A02` と実訳に依存する `A06`／`U01`〜`U12` の結線状態は、凍結 `MINIDORA-BETA 0.6.0b1` の公開翻訳契約を確認できないため `BLOCKED`。この判定は外側の基盤施工を阻止しない。
 
-2026-11-09に [共通契約スキーマ](../contracts/konjac-v1.schema.json)のDraft 2020-12適合、11レコード種の例、明示的遠隔同意、確定訳のエンジン証跡、未対応結果の無訳文、外部配送許可、未知フィールド拒否、TranslationEvent参照要件、SourceAsset参照・同意・metadata条件、SourceSpan tagged payload/positionとnullable field条件、[OpenAPI](../contracts/openapi-v1.json)の3.1適合と参照解決、およびMINIDORA版能力プロファイルの閉鎖動作を検査し15件PASSした。これはA05/A06の契約形状QCと依存ゲートQCだけを部分確認するもので、上表の全体実装・結線・QC・QA・最終受入状態は変えない。
+2026-11-09に [共通契約スキーマ](../contracts/konjac-v1.schema.json)のDraft 2020-12適合、11レコード種の例、明示的遠隔同意、確定訳のエンジン証跡、未対応結果の無訳文、外部配送許可、未知フィールド拒否、TranslationEvent参照要件、SourceAsset参照・同意・metadata条件、SourceSpan tagged payload/positionとnullable field条件、EngineExecution capability証拠/fingerprint/終端対応条件、[OpenAPI](../contracts/openapi-v1.json)の3.1適合と参照解決、およびMINIDORA版能力プロファイルの閉鎖動作を検査し16件PASSした。これはA05/A06の契約形状QCと依存ゲートQCだけを部分確認するもので、上表の全体実装・結線・QC・QA・最終受入状態は変えない。
 
 製品アプリと全体経路がない現時点での総合状態は **製品受入 `NOT RUN`**、MINIDORA実訳接続は **`BLOCKED`**。RTranslatorを含む対象別QA、品質・性能・安全検収、Ownerによる独立検収は未実施。
 
-2026-11-09に同一作業ツリーでPython 3.12の19件（JSON Schema/OpenAPI形状、BCP 47形式・タグ順序、版付きTranslationRequest必須項目、TranslationEvent種別ごとのvariant/result/artifact参照、SourceAsset参照・同意・metadata条件、SourceSpan payload/position tagとnullable条件、unsupported結果の無訳文条件、監査済み能力ゲート）とRust 1.99.1の34件（論理record、BCP 47構文と正規化、同意範囲/期限/撤回と重複grant ID拒否、SourceAssetの同意/fingerprint/metadata/参照長、SourceSpan tagged payload/position/観測元、媒体取得/local・remote処理同意、配送Deliver grant照合とartifact-bound permit、session-scoped冪等keyの初回予約・完全一致再送・本文/版競合・並行排他、イベントページ間のsequence連続性・終端状態、版付き能力ゲート、言語ペア/文脈/モード別許可、アクティブセッションとsession/request/input revision、SourceAsset/Span/実行/全訳先結果参照、要求時間窓、拒否・期限・取消時の実行前停止、配送不変条件）を実行し、全件PASS。Rust `cargo fmt --all -- --check` と `cargo clippy --workspace --all-targets --locked -- -D warnings` もPASS。いずれも局所的な契約QCであり、IANA registry有効性、エンジン対応、実配信、永続イベント/冪等台帳・再起動復旧、製品経路、認証サービス、実行中取消伝播、同意の永続運用、MINIDORA呼出し、A/U全体受入は検証していない。
+2026-11-09に同一作業ツリーでPython 3.12の20件（JSON Schema/OpenAPI形状、BCP 47形式・タグ順序、版付きTranslationRequest必須項目、TranslationEvent種別ごとのvariant/result/artifact参照、SourceAsset参照・同意・metadata条件、SourceSpan payload/position tagとnullable条件、EngineExecution能力証拠/fingerprint/終端対応条件、unsupported結果の無訳文条件、監査済み能力ゲート）とRust 1.99.1の35件（論理record、BCP 47構文と正規化、同意範囲/期限/撤回と重複grant ID拒否、SourceAssetの同意/fingerprint/metadata/参照長、SourceSpan tagged payload/position/観測元、EngineExecutionの版付きcapability/fingerprint/状態写像/長さ、媒体取得/local・remote処理同意、配送Deliver grant照合とartifact-bound permit、session-scoped冪等keyの初回予約・完全一致再送・本文/版競合・並行排他、イベントページ間のsequence連続性・終端状態、版付き能力ゲート、言語ペア/文脈/モード別許可、アクティブセッションとsession/request/input revision、SourceAsset/Span/実行/全訳先結果参照、要求時間窓、拒否・期限・取消時の実行前停止、配送不変条件）を実行し、全件PASS。Rust `cargo fmt --all -- --check` と `cargo clippy --workspace --all-targets --locked -- -D warnings` もPASS。いずれも局所的な契約QCであり、IANA registry有効性、エンジン対応、実配信、永続イベント/冪等台帳・再起動復旧、製品経路、認証サービス、実行中取消伝播、同意の永続運用、MINIDORA呼出し、A/U全体受入は検証していない。
 
 ## 7. E01–E06 環境受入
 

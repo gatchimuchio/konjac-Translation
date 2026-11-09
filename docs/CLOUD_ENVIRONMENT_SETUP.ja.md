@@ -59,7 +59,7 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 /workspace/.venvs/konjac-translation/bin/python -m pip check
 ```
 
-2026-11-09の現環境でRust 1.99.1テスト34件、Python 3.12テスト19件、Rust formatter、clippy、`pip check`がPASS。これはBCP 47構文・正規化、共通論理型・同意評価・grant ID重複拒否、SourceAssetのfingerprint/所有者・権利参照/取得同意/scalar metadata/参照長、SourceSpanのtagged payload/position/観測元、SourceAssetごとの取得/local・remote処理同意照合、artifact-bound配送grant preflight、session-scoped並行冪等claim、ページ間event cursorのsequence・終端/配送順、イベント種別ごとのwire参照要件、セッションと入力版の参照境界、言語ペア/文脈/モード別能力境界、要求時間窓、拒否/期限/取消時の実行前停止、JSON/OpenAPI射影の局所確認であり、IANA registry有効性、エンジン対応、永続冪等台帳/event log、再起動復旧、実配信、認証サービス、永続同意、実行中取消伝播、MINIDORA実訳、アプリ、サービス、OS別QAや製品受入を示さない。
+2026-11-09の現環境でRust 1.99.1テスト35件、Python 3.12テスト20件、Rust formatter、clippy、`pip check`がPASS。これはBCP 47構文・正規化、共通論理型・同意評価・grant ID重複拒否、SourceAssetのfingerprint/所有者・権利参照/取得同意/scalar metadata/参照長、SourceSpanのtagged payload/position/観測元、EngineExecutionの版付き能力証拠/input・response fingerprint/終端対応、SourceAssetごとの取得/local・remote処理同意照合、artifact-bound配送grant preflight、session-scoped並行冪等claim、ページ間event cursorのsequence・終端/配送順、イベント種別ごとのwire参照要件、セッションと入力版の参照境界、言語ペア/文脈/モード別能力境界、要求時間窓、拒否/期限/取消時の実行前停止、JSON/OpenAPI射影の局所確認であり、IANA registry有効性、エンジン対応、永続冪等台帳/event log、再起動復旧、実配信、認証サービス、永続同意、実行中取消伝播、MINIDORA実訳、アプリ、サービス、OS別QAや製品受入を示さない。
 
 ## クラウド設定の保存状態
 
