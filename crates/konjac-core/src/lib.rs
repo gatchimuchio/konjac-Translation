@@ -495,6 +495,17 @@ impl TranslationSession {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ObservationOrigin {
+    Typed,
+    Asr,
+    Ocr,
+    DocumentParser,
+    WebExtractor,
+    Connector,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum SpanPayload {
@@ -534,7 +545,9 @@ impl SourcePosition {
             {
                 Err(ContractError::InvalidSourcePosition)
             }
-            Self::DocumentAnchor { anchor, page } if anchor.is_empty() || page == &Some(0) => {
+            Self::DocumentAnchor { anchor, page }
+                if anchor.is_empty() || anchor.chars().count() > 1024 || page == &Some(0) =>
+            {
                 Err(ContractError::InvalidSourcePosition)
             }
             Self::ImageBounds {
@@ -565,7 +578,7 @@ define_record!(SourceSpan {
     pub revision: u64,
     pub payload: SpanPayload,
     pub source_language: Option<LanguageTag>,
-    pub observation_origin: String,
+    pub observation_origin: ObservationOrigin,
     pub confidence: Option<f32>,
     pub speaker_id: Option<Uuid>,
     pub position: Option<SourcePosition>,
@@ -574,8 +587,8 @@ define_record!(SourceSpan {
 
 impl SourceSpan {
     pub fn validate(&self) -> Result<(), ContractError> {
-        validate_base(&self.contract_version, &self.observation_origin)?;
-        if self.revision == 0 || self.observation_origin.is_empty() {
+        validate_base(&self.contract_version, "SourceSpan")?;
+        if self.revision == 0 {
             return Err(ContractError::InvalidSourceSpan);
         }
         if let SpanPayload::Text { text } = &self.payload
@@ -1514,6 +1527,64 @@ mod tests {
         asset = source_asset();
         asset.content_ref.as_mut().unwrap().key = "x".repeat(1025);
         assert_eq!(asset.validate(), Err(ContractError::InvalidReference));
+    }
+
+    #[test]
+    fn source_span_uses_tagged_payload_and_position_records() {
+        let span = SourceSpan {
+            contract_version: LOGICAL_CONTRACT_VERSION.into(),
+            record_id: Uuid::from_u128(50),
+            created_at: at(1),
+            asset_id: Uuid::from_u128(51),
+            session_id: Uuid::from_u128(52),
+            revision: 1,
+            payload: SpanPayload::Text {
+                text: "こんにちは".into(),
+            },
+            source_language: Some("ja".parse().unwrap()),
+            observation_origin: ObservationOrigin::Typed,
+            confidence: None,
+            speaker_id: None,
+            position: Some(SourcePosition::AudioTime {
+                start_ms: 0,
+                end_ms: 100,
+            }),
+            provenance_ref: None,
+        };
+        assert_eq!(span.validate(), Ok(()));
+
+        let encoded = serde_json::to_value(&span).unwrap();
+        assert_eq!(encoded["payload"]["kind"], "text");
+        assert_eq!(encoded["position"]["kind"], "audio_time");
+        assert_eq!(serde_json::from_value::<SourceSpan>(encoded).unwrap(), span);
+
+        let mut invalid = span.clone();
+        invalid.payload = SpanPayload::Text {
+            text: String::new(),
+        };
+        assert_eq!(invalid.validate(), Err(ContractError::InvalidSourceSpan));
+        invalid.payload = span.payload;
+        invalid.position = Some(SourcePosition::AudioTime {
+            start_ms: 100,
+            end_ms: 0,
+        });
+        assert_eq!(
+            invalid.validate(),
+            Err(ContractError::InvalidSourcePosition)
+        );
+
+        invalid.position = Some(SourcePosition::ImageBounds {
+            page: None,
+            x: 0.8,
+            y: 0.1,
+            width: 0.3,
+            height: 0.2,
+        });
+        assert_eq!(
+            invalid.validate(),
+            Err(ContractError::InvalidSourcePosition)
+        );
+        assert!(serde_json::from_str::<ObservationOrigin>("\"typed_fixture\"").is_err());
     }
 
     #[test]

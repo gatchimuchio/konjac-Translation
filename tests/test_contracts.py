@@ -30,7 +30,7 @@ SAMPLES = [
     record("ConsentGrant", "10000000-0000-4000-8000-000000000001", principal_id="owner", scope="process_local", subject_ids=[], granted_at=STAMP),
     record("SourceAsset", "10000000-0000-4000-8000-000000000002", media_kind="text", origin="user_input", media_type="text/plain", retention="ephemeral", metadata={}),
     record("TranslationSession", "10000000-0000-4000-8000-000000000003", revision=1, status="active", source_language="ja", target_languages=["en"], participants=[{"participant_id": "10000000-0000-4000-8000-000000000004", "role": "owner", "consent_grant_ids": []}], context_refs=[], terminology_refs=[], processing_location="local_only", consent_grant_ids=[], retention="ephemeral"),
-    record("SourceSpan", "10000000-0000-4000-8000-000000000005", asset_id="10000000-0000-4000-8000-000000000002", session_id="10000000-0000-4000-8000-000000000003", revision=1, source_text="こんにちは", source_language="ja", observation_origin="typed"),
+    record("SourceSpan", "10000000-0000-4000-8000-000000000005", asset_id="10000000-0000-4000-8000-000000000002", session_id="10000000-0000-4000-8000-000000000003", revision=1, payload={"kind": "text", "text": "こんにちは"}, source_language="ja", observation_origin="typed"),
     record("TranslationRequest", "10000000-0000-4000-8000-000000000006", session_id="10000000-0000-4000-8000-000000000003", session_revision=1, revision=1, source_span_ids=["10000000-0000-4000-8000-000000000005"], input_revision=1, target_languages=["en"], context_refs=[], terminology_refs=[], requested_outputs=["text"], execution_mode="batch", processing_location="local_only", idempotency_key="konjac-request-0001", attempt=1),
     record("EngineExecution", "10000000-0000-4000-8000-000000000007", request_id="10000000-0000-4000-8000-000000000006", engine_name="MINIDORA-BETA", engine_version="0.6.0b1", engine_revision="fe5822de63644bdaea9208a98046f71684dffae2", public_entry_point="minidora.engine_beta.ミニドラβ実行機", capability_id="translation.text", outcome="UNSUPPORTED", started_at=STAMP, finished_at=STAMP, diagnostic_code="CAPABILITY_NOT_EXPOSED"),
     record("TranslationVariant", "10000000-0000-4000-8000-000000000008", request_id="10000000-0000-4000-8000-000000000006", source_span_id="10000000-0000-4000-8000-000000000005", target_language="en", revision=1, status="UNSUPPORTED", text=None, produced_at=STAMP),
@@ -123,6 +123,40 @@ class ContractSchemaTests(unittest.TestCase):
             "size_bytes": 18446744073709551616,
         }
         self.assertFalse(VALIDATOR.is_valid(oversized_reference))
+
+    def test_source_span_uses_tagged_payload_and_position_records(self) -> None:
+        span = deepcopy(SAMPLES[3])
+        span.update(
+            {
+                "source_language": None,
+                "confidence": None,
+                "speaker_id": None,
+                "position": None,
+                "provenance_ref": None,
+            }
+        )
+        VALIDATOR.validate(span)
+
+        positions = [
+            {"kind": "audio_time", "start_ms": 0, "end_ms": 100},
+            {"kind": "video_time", "start_ms": 1, "end_ms": 2},
+            {"kind": "document_anchor", "anchor": "paragraph/1", "page": None},
+            {"kind": "image_bounds", "page": 1, "x": 0.1, "y": 0.2, "width": 0.3, "height": 0.4},
+        ]
+        for position in positions:
+            with self.subTest(position=position["kind"]):
+                span["position"] = position
+                VALIDATOR.validate(span)
+
+        span["payload"] = {
+            "kind": "media",
+            "reference": {"kind": "remote", "key": "media/audio-1", "media_type": None, "sha256": None, "size_bytes": None},
+        }
+        VALIDATOR.validate(span)
+        span["payload"] = {"kind": "text", "text": ""}
+        self.assertFalse(VALIDATOR.is_valid(span))
+        span["payload"] = {"kind": "text", "text": "ok", "extra": "rejected"}
+        self.assertFalse(VALIDATOR.is_valid(span))
 
     def test_language_tags_follow_bcp47_subtag_order(self) -> None:
         session = deepcopy(SAMPLES[2])

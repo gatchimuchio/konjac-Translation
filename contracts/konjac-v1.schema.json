@@ -142,20 +142,74 @@
       ],
       "unevaluatedProperties": false
     },
+    "spanPayload": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {"const": "text"},
+            "text": {"type": "string", "minLength": 1, "description": "Sensitive source content. Process only under recorded consent and retention; never copy into logs or diagnostic traces."}
+          },
+          "required": ["kind", "text"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {"const": "media"},
+            "reference": {"$ref": "#/$defs/reference"}
+          },
+          "required": ["kind", "reference"],
+          "additionalProperties": false
+        }
+      ]
+    },
     "position": {
-      "type": "object",
-      "properties": {
-        "start_ms": {"type": "integer", "minimum": 0},
-        "end_ms": {"type": "integer", "minimum": 0},
-        "document_anchor": {"type": "string", "maxLength": 1024},
-        "page": {"type": "integer", "minimum": 1},
-        "bounding_box": {"type": "array", "items": {"type": "number", "minimum": 0, "maximum": 1}, "minItems": 4, "maxItems": 4}
-      },
-      "additionalProperties": false,
-      "anyOf": [
-        {"required": ["start_ms", "end_ms"]},
-        {"required": ["document_anchor"]},
-        {"required": ["page", "bounding_box"]}
+      "$comment": "Runtime validation additionally enforces end_ms > start_ms and that image bounds have positive dimensions and stay inside the unit rectangle.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {"const": "audio_time"},
+            "start_ms": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+            "end_ms": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615}
+          },
+          "required": ["kind", "start_ms", "end_ms"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {"const": "video_time"},
+            "start_ms": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+            "end_ms": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615}
+          },
+          "required": ["kind", "start_ms", "end_ms"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {"const": "document_anchor"},
+            "anchor": {"type": "string", "minLength": 1, "maxLength": 1024},
+            "page": {"type": ["integer", "null"], "minimum": 1, "maximum": 4294967295}
+          },
+          "required": ["kind", "anchor"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {"const": "image_bounds"},
+            "page": {"type": ["integer", "null"], "minimum": 1, "maximum": 4294967295},
+            "x": {"type": "number", "minimum": 0, "maximum": 1},
+            "y": {"type": "number", "minimum": 0, "maximum": 1},
+            "width": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+            "height": {"type": "number", "exclusiveMinimum": 0, "maximum": 1}
+          },
+          "required": ["kind", "x", "y", "width", "height"],
+          "additionalProperties": false
+        }
       ]
     },
     "SourceSpan": {
@@ -166,16 +220,16 @@
             "record_type": {"const": "SourceSpan"},
             "asset_id": {"$ref": "#/$defs/id"},
             "session_id": {"$ref": "#/$defs/id"},
-            "revision": {"type": "integer", "minimum": 1},
-            "source_text": {"type": "string", "minLength": 1, "description": "Sensitive source content. Process only under recorded consent and retention; never copy into logs or diagnostic traces."},
-            "source_language": {"oneOf": [{"$ref": "#/$defs/languageTag"}, {"const": "und"}]},
+            "revision": {"type": "integer", "minimum": 1, "maximum": 18446744073709551615},
+            "payload": {"$ref": "#/$defs/spanPayload"},
+            "source_language": {"anyOf": [{"$ref": "#/$defs/languageTag"}, {"type": "null"}]},
             "observation_origin": {"enum": ["typed", "asr", "ocr", "document_parser", "web_extractor", "connector"]},
-            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-            "speaker_id": {"$ref": "#/$defs/id"},
-            "position": {"$ref": "#/$defs/position"},
-            "provenance_ref": {"$ref": "#/$defs/reference"}
+            "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+            "speaker_id": {"type": ["string", "null"], "format": "uuid"},
+            "position": {"anyOf": [{"$ref": "#/$defs/position"}, {"type": "null"}]},
+            "provenance_ref": {"anyOf": [{"$ref": "#/$defs/reference"}, {"type": "null"}]}
           },
-          "required": ["asset_id", "session_id", "revision", "source_text", "source_language", "observation_origin"]
+          "required": ["asset_id", "session_id", "revision", "payload", "observation_origin"]
         }
       ],
       "unevaluatedProperties": false
@@ -246,9 +300,9 @@
             "status": {"enum": ["PROVISIONAL", "FINAL", "UNSUPPORTED", "SUSPEND", "FAILED", "CANCELLED", "TIMED_OUT"]},
             "text": {"type": ["string", "null"], "minLength": 1},
             "engine_execution_id": {"$ref": "#/$defs/id"},
-            "provenance_ref": {"$ref": "#/$defs/reference"},
-            "speaker_id": {"$ref": "#/$defs/id"},
-            "position": {"$ref": "#/$defs/position"},
+            "provenance_ref": {"anyOf": [{"$ref": "#/$defs/reference"}, {"type": "null"}]},
+            "speaker_id": {"type": ["string", "null"], "format": "uuid"},
+            "position": {"anyOf": [{"$ref": "#/$defs/position"}, {"type": "null"}]},
             "produced_at": {"$ref": "#/$defs/timestamp"}
           },
           "required": ["request_id", "source_span_id", "target_language", "revision", "status", "text", "produced_at"]

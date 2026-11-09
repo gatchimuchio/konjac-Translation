@@ -1037,7 +1037,7 @@ mod tests {
                 text: "synthetic fixture input".into(),
             },
             source_language: Some("ja".parse().unwrap()),
-            observation_origin: "typed_fixture".into(),
+            observation_origin: crate::ObservationOrigin::Typed,
             confidence: None,
             speaker_id: None,
             position: None,
