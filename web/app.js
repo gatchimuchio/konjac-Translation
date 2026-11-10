@@ -2,6 +2,7 @@
 
 const CONTRACT_VERSION = "konjac.translation.v1";
 const ACCEPTED_TRANSLATION_STATUS = "TRANSLATION_ACCEPTED";
+const LANGUAGE_SETTINGS_KEY = "konjac.translation.language-settings.v1";
 const MAX_TARGETS = 16;
 const targetLanguages = new Set(["en"]);
 const form = document.querySelector("#translation-form");
@@ -12,6 +13,9 @@ const targetList = document.querySelector("#target-list");
 const resultContent = document.querySelector("#result-content");
 const resultStatus = document.querySelector("#result-status");
 const submitButton = document.querySelector("#submit-translation");
+const rememberLanguageSettings = document.querySelector("#remember-language-settings");
+const clearLanguageSettings = document.querySelector("#clear-language-settings");
+const languageSettingsStatus = document.querySelector("#language-settings-status");
 
 function validTag(tag) {
   if (tag.length === 0 || tag.length > 63) return false;
@@ -19,6 +23,75 @@ function validTag(tag) {
   return parts.length > 0
     && parts[0].length >= 1 && parts[0].length <= 8 && /^[A-Za-z]+$/.test(parts[0])
     && parts.slice(1).every((part) => part.length >= 1 && part.length <= 8 && /^[A-Za-z0-9]+$/.test(part));
+}
+
+function validLanguageSettings(settings) {
+  if (settings?.version !== 1 || !Array.isArray(settings.target_languages)) return false;
+  const keys = Object.keys(settings).sort();
+  if (keys.join(",") !== "source_language_hint,target_languages,version") return false;
+  if (settings.target_languages.length > MAX_TARGETS) return false;
+  if (!settings.target_languages.every((tag) => typeof tag === "string" && validTag(tag))) return false;
+  const normalizedTargets = settings.target_languages.map((tag) => tag.toLowerCase());
+  if (new Set(normalizedTargets).size !== normalizedTargets.length) return false;
+  return settings.source_language_hint === null
+    || (typeof settings.source_language_hint === "string" && validTag(settings.source_language_hint));
+}
+
+function loadLanguageSettings() {
+  try {
+    const stored = localStorage.getItem(LANGUAGE_SETTINGS_KEY);
+    if (stored === null) {
+      clearLanguageSettings.disabled = true;
+      languageSettingsStatus.textContent = "設定は保存されていません。原文や訳文は保存対象外です。";
+      return;
+    }
+    clearLanguageSettings.disabled = false;
+    const settings = JSON.parse(stored);
+    if (!validLanguageSettings(settings)) {
+      languageSettingsStatus.textContent = "保存設定を読み取れません。削除して言語設定をやり直してください。";
+      return;
+    }
+    targetLanguages.clear();
+    for (const tag of settings.target_languages) targetLanguages.add(tag);
+    sourceLanguage.value = settings.source_language_hint || "";
+    rememberLanguageSettings.checked = true;
+    languageSettingsStatus.textContent = "保存した言語設定を読み込みました。原文や訳文は保存しません。";
+  } catch {
+    languageSettingsStatus.textContent = "このブラウザーの保存設定にアクセスできません。";
+  }
+}
+
+function saveLanguageSettings() {
+  if (!rememberLanguageSettings.checked) return;
+  const sourceHint = sourceLanguage.value.trim();
+  const sourceHintIsValid = sourceHint === "" || validTag(sourceHint);
+  const settings = {
+    version: 1,
+    source_language_hint: sourceHintIsValid ? (sourceHint || null) : null,
+    target_languages: [...targetLanguages],
+  };
+  try {
+    localStorage.setItem(LANGUAGE_SETTINGS_KEY, JSON.stringify(settings));
+    clearLanguageSettings.disabled = false;
+    languageSettingsStatus.textContent = sourceHintIsValid
+      ? "言語設定をこのブラウザーに保存しました。原文や訳文は保存しません。"
+      : "訳先言語を保存しました。形式が正しくない原言語ヒントは保存していません。";
+  } catch {
+    languageSettingsStatus.textContent = "設定を保存できませんでした。原文や訳文は保存していません。";
+  }
+}
+
+function deleteLanguageSettings() {
+  try {
+    localStorage.removeItem(LANGUAGE_SETTINGS_KEY);
+    rememberLanguageSettings.checked = false;
+    clearLanguageSettings.disabled = true;
+    languageSettingsStatus.textContent = "保存済み言語設定を削除しました。現在の入力は変更していません。";
+    return true;
+  } catch {
+    languageSettingsStatus.textContent = "保存済み設定を削除できませんでした。";
+    return false;
+  }
 }
 
 function renderTargets() {
@@ -35,6 +108,7 @@ function renderTargets() {
     remove.addEventListener("click", () => {
       targetLanguages.delete(tag);
       renderTargets();
+      saveLanguageSettings();
     });
     chip.append(text, remove);
     targetList.append(chip);
@@ -62,8 +136,20 @@ document.querySelector("#add-target").addEventListener("click", () => {
   targetLanguages.add(tag);
   targetInput.value = "";
   renderTargets();
+  saveLanguageSettings();
   targetInput.focus();
 });
+
+rememberLanguageSettings.addEventListener("change", () => {
+  if (rememberLanguageSettings.checked) saveLanguageSettings();
+  else if (!deleteLanguageSettings()) rememberLanguageSettings.checked = true;
+});
+
+clearLanguageSettings.addEventListener("click", () => {
+  if (!deleteLanguageSettings()) rememberLanguageSettings.checked = true;
+});
+
+sourceLanguage.addEventListener("change", saveLanguageSettings);
 
 targetInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
@@ -204,7 +290,10 @@ function renderModes(modes) {
     code.textContent = mode.requirement_id;
     heading.append(code, document.createTextNode(mode.experience));
     const pill = document.createElement("span");
-    pill.className = `pill ${mode.current_status.includes("BLOCKED") ? "pill-blocked" : "pill-unsupported"}`;
+    const statusClass = mode.current_status.includes("BLOCKED")
+      ? "pill-blocked"
+      : mode.current_status.includes("PARTIAL") ? "pill-partial" : "pill-unsupported";
+    pill.className = `pill ${statusClass}`;
     pill.textContent = mode.current_status;
     const detail = document.createElement("p");
     detail.className = "mode-detail";
@@ -228,5 +317,6 @@ async function loadModes() {
   }
 }
 
+loadLanguageSettings();
 renderTargets();
 loadModes();

@@ -73,7 +73,7 @@
 | A07 | dependency lock・package license metadataを記録。第三者コード・モデル・dataの取り込みなし | `CODE_PRESENT`（製品全体の出荷監査は未成立） |
 | U01 | 文字入力フォームとloopback JSON入口からblock理由を表示 | `CODE_PRESENT` / translation `BLOCKED_ENGINE_CAPABILITY` |
 | U02–U10 | 会話・音声・会議・動画・Web・文書・画像・chat adapterなし | `NOT_IMPLEMENTED` |
-| U11 | 永続言語設定・文脈引継ぎ・端末間同期なし | `NOT_IMPLEMENTED` |
+| U11 | 明示opt-inのブラウザー内言語タグ保存・削除のみ。文脈引継ぎ・媒体／端末間同期なし | `PARTIAL_CODE_PRESENT` |
 | U12 | loopback text endpointのみ。利用者認証・SDK・remote jobs・cancel/deliveryなし | `PARTIAL_CODE_PRESENT` |
 
 **製品受入判定：A01〜A07、U01〜U12の要求全体、翻訳品質・性能・アクセシビリティ・全媒体安全・Windows/Web/mobile対象QA・release gateは `NOT RUN` または能力依存により `BLOCKED`。** テストPASSは上表の局所状態だけを裏付け、実訳・接続・製品完成へ拡張しない。
@@ -92,5 +92,6 @@
 - MINIDORA隔離公開API観測：`0.6.0b1`ソースbuildを一時venvに導入し、明示完了条件ありの3言語方向を実行。全件`SUSPEND`／`HDS_NO_PRODUCTIVE_ACTION`で、訳文採用なし。詳細とsource SHAは`docs/ENGINE_INTEGRATION.ja.md` §7を参照。
 - MINIDORA別成果候補観測：`0.7.0-alpha.8` commit `a55402b86090109117ffc68bfc6abe85b2c86012`のCLIを隔離buildし、日本語↔英語の2依頼を実行。buildはPASS、双方`SUSPEND`／`CAPABILITY_UNAVAILABLE`で訳文なし。候補版は選択・統合していない。詳細は`docs/ENGINE_INTEGRATION.ja.md` §8。
 - ブラウザー送信前preflight：loopback UIでblocked status時は能力GETのみでPOSTなし、入力をフォームに保持、page errorなしをPlaywright／Chromiumで確認。能力GET失敗時も原文をPOSTせずエラー表示。合成preflightで`TRANSLATION_ACCEPTED`を返した制御試験ではPOST経路に進むが、応答はmock blockedであり、実翻訳の証拠ではない。
-- `BLOCKED`: 選択MINIDORA版での成功翻訳受入。`NOT RUN`: Konjacからのengine統合、データ永続化／消去、Windows／macOS／Android／iOS/Web配布、実機権限、remote effects、全Uxx品質受入、性能測定、独立QA。
+- U11のブラウザー保存：初期offでは原言語ヒント・訳先言語タグを再読込後も保存しない。明示opt-in後はversion、原言語ヒント、訳先言語タグのみをlocalStorageへ保存し、固有の原文を含めないこと、再読込で設定を復元すること、削除操作でキーを消し再読込後は初期値へ戻ることをPlaywright／Chromiumで確認 — PASS。訳文は未生成であり、文脈・人物・用語の保持、他媒体／端末との同期は未実装。
+- `BLOCKED`: 選択MINIDORA版での成功翻訳受入。`NOT RUN`: Konjacからのengine統合、原文・訳文・セッション文脈等の保持／消去、Windows／macOS／Android／iOS/Web配布、実機権限、remote effects、全Uxx品質受入、性能測定、独立QA。
 

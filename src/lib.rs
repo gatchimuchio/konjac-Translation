@@ -326,9 +326,9 @@ pub fn mode_capabilities() -> Vec<ModeCapability> {
         mode(
             "U11",
             "Cross-media language and context continuity",
-            "NOT_IMPLEMENTED",
+            "LOCAL_LANGUAGE_PREFERENCES",
             "NOT_CALLED",
-            "NOT_IMPLEMENTED",
+            "PARTIAL_CODE_PRESENT",
         ),
         mode(
             "U12",
@@ -458,5 +458,11 @@ mod tests {
         assert_eq!(modes.len(), 12);
         assert_eq!(modes.first().map(|m| m.requirement_id), Some("U01"));
         assert_eq!(modes.last().map(|m| m.requirement_id), Some("U12"));
+        let u11 = modes
+            .iter()
+            .find(|mode| mode.requirement_id == "U11")
+            .unwrap();
+        assert_eq!(u11.input_adapter, "LOCAL_LANGUAGE_PREFERENCES");
+        assert_eq!(u11.current_status, "PARTIAL_CODE_PRESENT");
     }
 }

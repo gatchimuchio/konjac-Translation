@@ -1,6 +1,6 @@
 # Security and Privacy Policy — Konjac Translation
 
-**Project status:** a local Rust text-input runtime is present in source, but there is currently **no shipped runtime or supported security patch release**. The local server binds only to loopback, does not call a translation engine, and does not persist or log request text. While U01 is blocked, the browser checks capability without sending the source text to the local service. Other modalities and delivery actions are not implemented.
+**Project status:** a local Rust text-input runtime is present in source, but there is currently **no shipped runtime or supported security patch release**. The local server binds only to loopback, does not call a translation engine, and does not persist or log request text. While U01 is blocked, the browser checks capability without sending the source text to the local service. The browser can store only language tags after explicit opt-in; a clear control removes them. Source text, translated text and session context are not stored. Other modalities and delivery actions are not implemented.
 
 Speech, video, private messages, documents and camera content can be highly sensitive. Product implementation must treat capture, interpretation, translation, storage and delivery as separately authorized operations.
 

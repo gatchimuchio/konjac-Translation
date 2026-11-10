@@ -95,6 +95,7 @@ DeliveryPort: EngineExecution + TranslationVariant[] -> authorized DeliveryArtif
 - ブラウザーUIは画面初期化時と送信直前に`GET /api/v1/capabilities`を行う。U01の`current_status`が厳密に`TRANSLATION_ACCEPTED`の場合のみ原文を含む`POST /api/v1/translate`へ進む。現在は`BLOCKED_ENGINE_CAPABILITY`なので原文をブラウザー内に保持し、ローカルserviceにも送らず、能力状態だけで停止表示する。能力確認に失敗した場合も原文を送らない。
 - 直接API利用者が`POST /api/v1/translate`を呼んだ場合、text bodyはloopback request中だけmemory上で扱う。選択版の実engine executorがないため意味処理せず、`BLOCKED_ENGINE_CAPABILITY`、engine証拠参照、訳先別状態を返し、`TranslationVariant`を作らない。
 - APIの呼出しはloopback内に限るが、本番の利用者認証やU12の認証ジョブ契約は未実装。UIからの外部送信・ファイル保存、永続history、cancel/reconcileも未実装である。
+- U11向けに、初期offの明示opt-in browser localStorageを追加した。保存可能な値は`version`, `source_language_hint`, `target_languages`だけで、原文・訳文・人物・会話文脈・履歴は書き込まない。画面から削除できるが、browser profile外への同期や他媒体からの共有はない。
 - 環境、version、OS別の実訳・返答・配送・結果保存は未試験。ローカルで返るblocked JSONを`WIRED`または実訳として扱わない。
 
 ## 7. 2026-11-10 選択版MINIDORA公開入口の隔離実行

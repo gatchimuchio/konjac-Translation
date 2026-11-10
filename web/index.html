@@ -48,7 +48,7 @@
 
           <label class="field-label" for="source-text">原文</label>
           <textarea id="source-text" name="source-text" rows="9" maxlength="131072" required placeholder="翻訳したい文章を入力"></textarea>
-          <div class="field-foot"><span>最大 128 KiB · 入力内容は保存されません</span><span id="character-count">0 bytes</span></div>
+          <div class="field-foot"><span>最大 128 KiB · 原文は保存されません</span><span id="character-count">0 bytes</span></div>
 
           <fieldset class="target-fieldset">
             <legend class="field-label">訳先言語 <span>1〜16言語</span></legend>
@@ -59,6 +59,17 @@
               <button id="add-target" class="button button-secondary" type="button">言語を追加</button>
             </div>
           </fieldset>
+
+          <section class="language-settings" aria-label="言語設定の保存">
+            <div class="language-settings-controls">
+              <label class="preference-check" for="remember-language-settings">
+                <input id="remember-language-settings" type="checkbox">
+                <span>このブラウザーに言語設定を保存</span>
+              </label>
+              <button id="clear-language-settings" class="button button-secondary" type="button" disabled>保存設定を削除</button>
+            </div>
+            <p id="language-settings-status" class="language-settings-status" role="status" aria-live="polite">設定は保存されていません。原文や訳文は保存対象外です。</p>
+          </section>
 
           <button id="submit-translation" class="button button-primary" type="submit">
             <span>翻訳の可否を確認</span><span aria-hidden="true">→</span>
@@ -103,7 +114,7 @@
 
       <section class="contract-note" aria-label="データと処理の説明">
         <h2>入力データと処理範囲</h2>
-        <p>このWeb画面から送るのは、入力した文章、言語タグ、端末内で生成する一時IDだけです。入力内容はログ・ディスク・外部サービスへ保存せず、通信はローカルのループバック接続に限ります。マイク、カメラ、画面、ファイルへのアクセス機能はありません。</p>
+        <p>翻訳能力の確認中は原文をブラウザー内に保持し、送信しません。翻訳が受入済みの場合に限り、入力文と言語タグをループバック接続で送ります。原文はログ・ディスク・外部サービスへ保存しません。言語タグは任意でこのブラウザーに保存でき、いつでも削除できます。マイク、カメラ、画面、ファイルへのアクセス機能はありません。</p>
         <p>現状の受入範囲: 文字入力と型付き未対応結果の表示。実訳、履歴、共有、音声・画像・文書・Web・会議連携、他OSでの確認は未成立です。</p>
       </section>
     </main>
