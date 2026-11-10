@@ -9,8 +9,17 @@ and LICENSE-CC-BY-4.0.
 
 Related independent project:
 - MINIDORA-BETA, https://github.com/gatchimuchio/MINIDORA-BETA
-  Selected future engine dependency; not vendored in this repository.
+  Selected engine dependency; not vendored or currently wired in this repository.
   It has its own license scope, notices, dependencies and release boundaries.
+
+Rust package dependencies (locked in Cargo.lock; fetched from crates.io and not vendored):
+- serde 1.0.229, serde_core 1.0.229, serde_derive 1.0.229,
+  serde_json 1.0.154, itoa 1.0.19, proc-macro2 1.0.107, quote 1.0.47,
+  syn 3.0.10, unicode-ident 1.0.27, memchr 2.8.3, and zmij 1.0.23.
+- Their Cargo package metadata declares MIT, Apache-2.0, Unicode-3.0,
+  or Unlicense terms as applicable. See the exact `license` fields from
+  `cargo metadata --locked --format-version 1` and each package's registry
+  manifest for its applicable terms. No dependency supplies translation.
 
 Sources analyzed as external implementation references (not copied/included):
 - RTranslator, https://github.com/niedev/RTranslator
@@ -20,9 +29,10 @@ Sources analyzed as external implementation references (not copied/included):
 - speech.cpp, https://github.com/nyosegawa/speech.cpp
   MIT License; downstream model assets have their own terms.
 
-NO THIRD-PARTY SOFTWARE, MODEL WEIGHTS OR DATASETS WERE IMPORTED BY
-THE REPOSITORY INITIALIZATION. These listings document inspiration
-and attribution, not permission to relicense or claim ownership.
+No third-party source, model weights or datasets have been copied into the
+repository. The Rust package dependencies are declared and locked as listed
+above. Reference-project listings document analysis, not permission to
+relicense or claim ownership.
 
 When third-party files or assets are later included, add their exact
 source commits, file paths, copyright, licenses, original notices,

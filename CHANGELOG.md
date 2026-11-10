@@ -2,6 +2,14 @@
 
 ## Unreleased — 2026-11-10
 
+### Local text-entry implementation
+
+- Added a Rust 1.99.1 workspace, loopback-only Web UI, and versioned JSON contract for typed text and multiple target languages.
+- Added an explicit `BLOCKED_ENGINE_CAPABILITY` response. The selected MINIDORA release is not wired, and the audited successor candidate does not establish accepted unrestricted translation. Requests return no translation variant and are not persisted or sent to a remote service.
+- Kept the U01–U12 product scope visible. Only text entry and the local request/status route are present; other media adapters, authenticated SDK/API, history, platform clients, translation acceptance, and release remain open.
+- Recorded locked Serde dependencies and their package license metadata in `NOTICE`.
+- Verification is limited to this source version and the commands/results recorded in [acceptance evidence](docs/ACCEPTANCE.ja.md); it does not establish full product QC, QA, or owner release.
+
 ### Agent governance and historical engineering reconciliation
 
 - Replaced the root `AGENTS.md` with a standalone Japanese-base Codex engineering contract. Consolidated common audit, responsibility, change, evidence, privacy, provenance and whole-system construction disciplines without importing other products' implementation authority.

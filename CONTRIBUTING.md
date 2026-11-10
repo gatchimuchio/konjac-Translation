@@ -1,10 +1,11 @@
 # Contributing to Konjac Translation
 
-Konjac Translation is currently at the **design-only** stage. There is no supported build or runnable application yet.
+Konjac Translation has a runnable Rust local text-input interface. It does not currently produce translations: MINIDORA translation capability is not connected or accepted. The other product modes and supported releases remain unimplemented.
 
 ## Before changes
 
 1. Read [AGENTS.md](AGENTS.md), [Product specification (JA)](docs/PRODUCT_SPEC.ja.md), [Architecture (JA)](docs/ARCHITECTURE.ja.md), [Engine integration (JA)](docs/ENGINE_INTEGRATION.ja.md), [Security](SECURITY.md), [LICENSE](LICENSE), and [NOTICE](NOTICE).
+   The workspace uses Rust 1.99.1; build and run from the repository root with `cargo run --locked -- serve`.
 2. Describe the translation **user experience** being improved, including input source, target users/languages, output form, accessibility, device and permission requirements.
 3. State whether a proposal changes media adapters, engine integration, user experience or governance. Do not create a second engine or silently modify MINIDORA-BETA.
 4. Record source/project provenance before importing dependencies or adapting third-party material.

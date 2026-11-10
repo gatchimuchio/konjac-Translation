@@ -75,3 +75,24 @@ DeliveryPort: EngineExecution + TranslationVariant[] -> authorized DeliveryArtif
 
 以上を満たすまで「MINIDORA翻訳機能完成」は未検証のまま保持する。
 
+## 6. 2026-11-10 実装・公開能力の観測
+
+これは今回のKonjac runtimeと公開MINIDORA資料を照合した時点の状態である。旧節の設計案や過去のcontrolled smokeを、翻訳能力の証明へ読み替えない。
+
+| 対象 | 観測 | Konjacでの扱い |
+|---|---|---|
+| 選択依存 `Engine Beta 1 0.6.0b1` | MINIDORA-BETAの公開[API guide](https://github.com/gatchimuchio/MINIDORA-BETA/blob/d907eaaa101ad04a29f83584b1ff39995fbb7d71/docs/API_GUIDE.md)は `minidora.engine_beta.ミニドラβ実行機.実行(...)` の一般テキスト入口、入力／Core／出力、同一executor内の重複抑止を説明する。ページは入力言語の品質を保証せず、translation functionや任意言語ペア受入証拠を記載していない。READMEのcontrolled exampleは接続配線試験である。 | 型付き翻訳API・翻訳受入・利用版固定が未成立。Konjacから未接続。 |
+| 別成果のRust候補 `0.7.0-alpha.7` | 公開main SHA `d907eaaa101ad04a29f83584b1ff39995fbb7d71` の[`rust/audit/IMPLEMENTATION_STATUS.md`](https://github.com/gatchimuchio/MINIDORA-BETA/blob/d907eaaa101ad04a29f83584b1ff39995fbb7d71/rust/audit/IMPLEMENTATION_STATUS.md)は「unrestricted translation」を未実装／未検証として明記し、一般Q&A・制約なし文章生成も未実装と記録。READMEも`0.7.0-alpha.7`を独立Rust開発実装として扱う。 | `0.6.0b1`との同一成果・後継採用を仮定しない。能力証拠に使わない。 |
+| Konjac `0.1.0` | `POST /api/v1/translate`、`GET /api/v1/capabilities`、 loopback UIが存在する。文字・言語タグ・session/input版を受理する。 | APIは翻訳エンジンを呼ばず、`BLOCKED_ENGINE_CAPABILITY`、`variants=[]`、`delivery_status=NOT_REQUESTED`を返す。要求本文を保存・出力せず、非テキスト媒体は`UNSUPPORTED_ADAPTER`で拒否する。 |
+
+公開資料は選択Betaの任意言語翻訳能力を確定していないため、ここでは能力の不存在ではなく`UNVERIFIED`として扱う。入力が一度受理されたことや任意の1文に結果が返ったことだけでは、言語翻訳の意味保持・一般性・品質受入は成立しない。
+
+### 現在のローカルHTTP契約
+
+- `cargo run --locked -- serve` はloopback IPだけにbindし、UIとJSON入口を同一originで提供する。遠隔利用・認証付きSDK・本番APIではない。
+- `TranslationSubmission`は`contract_version`, `session_id`, `input_version`, `source_kind`, `source_text`, `source_language_hint`, `target_languages`を持つ。対象言語は1〜16件、原文は128 KiBまで。契約versionと入力版を検証する。
+- `text`以外のsource kindは取得せず、`UNSUPPORTED_ADAPTER`／`NOT_CALLED`を返す。音声・カメラ・画面・ファイルの権限も要求しない。
+- `text`はフォームからローカルmemory上の1要求として受理する。選択版に紐づいた実engine executorがないため意味処理は行わない。`BLOCKED_ENGINE_CAPABILITY`とengine証拠参照、訳先別状態のみを返し、`TranslationVariant`を作らない。
+- APIの呼出しはloopback内に限るが、本番の利用者認証やU12の認証ジョブ契約は未実装。UI表示と送信・ファイル保存の区別、永続history、cancel/reconcileも未実装である。
+- 環境、version、OS別の実訳・返答・配送・結果保存は未試験。ローカルで返るblocked JSONを`WIRED`または実訳として扱わない。
+

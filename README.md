@@ -7,7 +7,15 @@ Konjac Translation (project name: `konjacTranslation`, nickname: **こんにゃ�
 
 This is a **translation product**, not a generic AI-agent platform, and not merely a phone interpreter, speech-to-text tool, or subtitle generator.
 
-> **Status — Design baseline, 2026-11-04.** This repository currently contains specifications and project governance only. There is **no runnable Konjac application**, no released beta, and no demonstrated end-to-end translation capability here. Intended functionality is not implemented functionality.
+> **Status — implementation baseline, 2026-11-10.** The repository now contains a runnable Rust local Web interface and JSON endpoint for typed text. It reports a blocked translation request because the selected MINIDORA capability is not connected or accepted for general translation. It does not produce translations. Audio, images, video, documents, Web capture, conversations, persistent history, remote API authentication, Windows/mobile clients, and release packaging remain unimplemented. There is no released beta or product acceptance claim.
+
+Run the local text interface with Rust 1.99.1:
+
+```sh
+cargo run --locked -- serve
+```
+
+Open `http://127.0.0.1:8787/`. The server binds only to loopback. Its `POST /api/v1/translate` contract preserves source/target language tags and returns a typed `BLOCKED_ENGINE_CAPABILITY` status with no translation variant while the MINIDORA route remains unverified. Requests are handled in memory for one response; raw input is not logged or persisted. See [the current engine evidence](docs/ENGINE_INTEGRATION.ja.md).
 
 ## One translation experience, many sources and destinations
 

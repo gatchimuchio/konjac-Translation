@@ -15,6 +15,7 @@ transcripts-private/
 local-data/
 tmp/
 temp/
+.konjac-local/
 
 # Common build/cache products (not source)
 __pycache__/
