@@ -106,3 +106,11 @@ Konjac本体の変更ではなく、選択版の公開実行入口が翻訳を�
 
 従ってKonjacの実engine接続は引き続き`NOT_WIRED`、U01は`BLOCKED_ENGINE_CAPABILITY`とする。選択版に翻訳を成立させる公開・受入済み作用／能力が用意されるまで、Konjac側で別の意味エンジンや成功扱いの変換を追加しない。
 
+## 8. 2026-11-10 MINIDORA-BETA最新公開mainの再確認
+
+再確認時の公開mainは[`a55402b86090109117ffc68bfc6abe85b2c86012`](https://github.com/gatchimuchio/MINIDORA-BETA/commit/a55402b86090109117ffc68bfc6abe85b2c86012)。この時点のRust後継は`0.7.0-alpha.8`で、READMEと実装状況はいずれも独立開発alpha・全要求受入未成立と記す。実装状況は、意味比較を有限の日本語表層markerに限定し、一般文の含意判定・無制限翻訳を未実装／未検証として明示している。翻訳consumerやmodalitiesも実provider・権限・障害・privacy等の証拠待ちである。
+
+前回確認した`d907eaaa101ad04a29f83584b1ff39995fbb7d71`からmainまでの3 commit／19 file差分にPython `src/minidora/`の変更はなく、凍結`0.6.0b1`の公開実行入口は変化していない。再確認時、GitHub Releasesは空で、PyPIの`minidora-notnn` project endpointも`404`だった。これらの配布経路に翻訳対応済みの選択可能版は見つからず、Rust alphaを凍結Betaと同一視したり、Konjacの選択版を無断で切り替えたりしない。
+
+結論は前節の隔離実行と同じく、翻訳成功受入`BLOCKED`、Konjac統合`NOT_WIRED`である。新しい公開・受入済みMINIDORA翻訳能力が出るか、オーナーがエンジン方針を変更するまで、この境界を維持する。
+
