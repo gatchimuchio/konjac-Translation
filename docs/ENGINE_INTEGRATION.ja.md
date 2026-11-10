@@ -112,5 +112,7 @@ Konjac本体の変更ではなく、選択版の公開実行入口が翻訳を�
 
 前回確認した`d907eaaa101ad04a29f83584b1ff39995fbb7d71`からmainまでの3 commit／19 file差分にPython `src/minidora/`の変更はなく、凍結`0.6.0b1`の公開実行入口は変化していない。再確認時、GitHub Releasesは空で、PyPIの`minidora-notnn` project endpointも`404`だった。これらの配布経路に翻訳対応済みの選択可能版は見つからず、Rust alphaを凍結Betaと同一視したり、Konjacの選択版を無断で切り替えたりしない。
 
+同じalpha 8 snapshotを一時checkout／一時Cargo cacheで通常CLIから実行した。`cargo build --locked --release --bin minidora-rust`は成功。日本語→英語（`Translate to English: 今日は良い天気です。`）と英語→日本語（`日本語へ翻訳: The train leaves at noon.`）の双方がexit code 2、`lifecycle=SUSPEND`、`CAPABILITY_UNAVAILABLE`を返し、描画・訳文・外部作用receiptはなかった。checkout、Cargo cache、target、試験状態は終了時に破棄した。これはalpha候補のCLI負例であり、Konjacとの接続試験や製品受入ではない。
+
 結論は前節の隔離実行と同じく、翻訳成功受入`BLOCKED`、Konjac統合`NOT_WIRED`である。新しい公開・受入済みMINIDORA翻訳能力が出るか、オーナーがエンジン方針を変更するまで、この境界を維持する。
 
