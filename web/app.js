@@ -3,10 +3,15 @@
 const CONTRACT_VERSION = "konjac.translation.v1";
 const ACCEPTED_TRANSLATION_STATUS = "TRANSLATION_ACCEPTED";
 const LANGUAGE_SETTINGS_KEY = "konjac.translation.language-settings.v1";
+const SESSION_ID = `browser-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
 const MAX_TARGETS = 16;
+let inputVersion = 1;
 const targetLanguages = new Set(["en"]);
 const form = document.querySelector("#translation-form");
 const sourceText = document.querySelector("#source-text");
+const copySourceButton = document.querySelector("#copy-source");
+const clearSourceButton = document.querySelector("#clear-source");
+const sourceActionStatus = document.querySelector("#source-action-status");
 const sourceLanguage = document.querySelector("#source-language");
 const targetInput = document.querySelector("#target-language");
 const targetList = document.querySelector("#target-list");
@@ -107,6 +112,7 @@ function renderTargets() {
     remove.textContent = "×";
     remove.addEventListener("click", () => {
       targetLanguages.delete(tag);
+      inputVersion += 1;
       renderTargets();
       saveLanguageSettings();
     });
@@ -134,6 +140,7 @@ document.querySelector("#add-target").addEventListener("click", () => {
     return;
   }
   targetLanguages.add(tag);
+  inputVersion += 1;
   targetInput.value = "";
   renderTargets();
   saveLanguageSettings();
@@ -149,7 +156,37 @@ clearLanguageSettings.addEventListener("click", () => {
   if (!deleteLanguageSettings()) rememberLanguageSettings.checked = true;
 });
 
+sourceLanguage.addEventListener("input", () => { inputVersion += 1; });
 sourceLanguage.addEventListener("change", saveLanguageSettings);
+
+function updateSourceControls() {
+  const bytes = new TextEncoder().encode(sourceText.value).length;
+  document.querySelector("#character-count").textContent = `${bytes} bytes`;
+  sourceText.setCustomValidity(bytes > 131072 ? "原文は128 KiB以内にしてください。" : "");
+  copySourceButton.disabled = sourceText.value.length === 0;
+  clearSourceButton.disabled = sourceText.value.length === 0;
+  sourceActionStatus.textContent = "";
+}
+
+copySourceButton.addEventListener("click", async () => {
+  if (sourceText.value.length === 0) return;
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable");
+    await navigator.clipboard.writeText(sourceText.value);
+    sourceActionStatus.textContent = "原文をクリップボードにコピーしました。";
+  } catch {
+    sourceActionStatus.textContent = "コピーできませんでした。ブラウザーの権限を確認してください。";
+  }
+});
+
+clearSourceButton.addEventListener("click", () => {
+  if (sourceText.value.length === 0) return;
+  sourceText.value = "";
+  inputVersion += 1;
+  updateSourceControls();
+  sourceActionStatus.textContent = "原文を画面から消去しました。";
+  sourceText.focus();
+});
 
 targetInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
@@ -159,9 +196,8 @@ targetInput.addEventListener("keydown", (event) => {
 });
 
 sourceText.addEventListener("input", () => {
-  const bytes = new TextEncoder().encode(sourceText.value).length;
-  document.querySelector("#character-count").textContent = `${bytes} bytes`;
-  sourceText.setCustomValidity(bytes > 131072 ? "原文は128 KiB以内にしてください。" : "");
+  inputVersion += 1;
+  updateSourceControls();
 });
 
 function setResultError(message) {
@@ -257,8 +293,8 @@ form.addEventListener("submit", async (event) => {
       cache: "no-store",
       body: JSON.stringify({
         contract_version: CONTRACT_VERSION,
-        session_id: `browser-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`,
-        input_version: 1,
+        session_id: SESSION_ID,
+        input_version: inputVersion,
         source_kind: "text",
         source_text: sourceText.value,
         source_language_hint: sourceHint || null,
@@ -319,4 +355,5 @@ async function loadModes() {
 
 loadLanguageSettings();
 renderTargets();
+updateSourceControls();
 loadModes();

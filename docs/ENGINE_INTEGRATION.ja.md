@@ -93,6 +93,7 @@ DeliveryPort: EngineExecution + TranslationVariant[] -> authorized DeliveryArtif
 - `TranslationSubmission`は`contract_version`, `session_id`, `input_version`, `source_kind`, `source_text`, `source_language_hint`, `target_languages`を持つ。対象言語は1〜16件、原文は128 KiBまで。契約versionと入力版を検証する。
 - `text`以外のsource kindは取得せず、`UNSUPPORTED_ADAPTER`／`NOT_CALLED`を返す。音声・カメラ・画面・ファイルの権限も要求しない。
 - ブラウザーUIは画面初期化時と送信直前に`GET /api/v1/capabilities`を行う。U01の`current_status`が厳密に`TRANSLATION_ACCEPTED`の場合のみ原文を含む`POST /api/v1/translate`へ進む。現在は`BLOCKED_ENGINE_CAPABILITY`なので原文をブラウザー内に保持し、ローカルserviceにも送らず、能力状態だけで停止表示する。能力確認に失敗した場合も原文を送らない。
+- session IDはページ単位で生成し、input versionは原文・原言語ヒント・訳先設定の編集で増分する。本文・ID・版はページのmemory上だけにあり、再読込で新しいsessionになる。翻訳能力がacceptedの場合に限り、この相関情報と原文をPOSTする。
 - 直接API利用者が`POST /api/v1/translate`を呼んだ場合、text bodyはloopback request中だけmemory上で扱う。選択版の実engine executorがないため意味処理せず、`BLOCKED_ENGINE_CAPABILITY`、engine証拠参照、訳先別状態を返し、`TranslationVariant`を作らない。
 - APIの呼出しはloopback内に限るが、本番の利用者認証やU12の認証ジョブ契約は未実装。UIからの外部送信・ファイル保存、永続history、cancel/reconcileも未実装である。
 - U11向けに、初期offの明示opt-in browser localStorageを追加した。保存可能な値は`version`, `source_language_hint`, `target_languages`だけで、原文・訳文・人物・会話文脈・履歴は書き込まない。画面から削除できるが、browser profile外への同期や他媒体からの共有はない。

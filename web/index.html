@@ -49,6 +49,11 @@
           <label class="field-label" for="source-text">原文</label>
           <textarea id="source-text" name="source-text" rows="9" maxlength="131072" required placeholder="翻訳したい文章を入力"></textarea>
           <div class="field-foot"><span>最大 128 KiB · 原文は保存されません</span><span id="character-count">0 bytes</span></div>
+          <div class="source-actions">
+            <p id="source-action-status" class="source-action-status" role="status" aria-live="polite"></p>
+            <button id="copy-source" class="button button-secondary" type="button" disabled>原文をコピー</button>
+            <button id="clear-source" class="button button-secondary" type="button" disabled>原文を消去</button>
+          </div>
 
           <fieldset class="target-fieldset">
             <legend class="field-label">訳先言語 <span>1〜16言語</span></legend>
@@ -114,7 +119,7 @@
 
       <section class="contract-note" aria-label="データと処理の説明">
         <h2>入力データと処理範囲</h2>
-        <p>翻訳能力の確認中は原文をブラウザー内に保持し、送信しません。翻訳が受入済みの場合に限り、入力文と言語タグをループバック接続で送ります。原文はログ・ディスク・外部サービスへ保存しません。言語タグは任意でこのブラウザーに保存でき、いつでも削除できます。マイク、カメラ、画面、ファイルへのアクセス機能はありません。</p>
+        <p>翻訳能力の確認中は原文をブラウザー内に保持し、送信しません。翻訳が受入済みの場合に限り、入力文と言語タグをループバック接続で送ります。原文・セッションID・入力版はこの画面を開いている間だけ扱い、原文はログ・ディスク・外部サービスへ保存しません。言語タグは任意でこのブラウザーに保存でき、いつでも削除できます。マイク、カメラ、画面、ファイルへのアクセス機能はありません。</p>
         <p>現状の受入範囲: 文字入力と型付き未対応結果の表示。実訳、履歴、共有、音声・画像・文書・Web・会議連携、他OSでの確認は未成立です。</p>
       </section>
     </main>

@@ -71,7 +71,7 @@
 | A05 | text session/version/source language/target languageの局所契約あり。原asset hash/ref、話者・時刻・位置等の全媒体相関はない | `PARTIAL_CODE_PRESENT` |
 | A06 | engine能力未確認時は訳文0件・配送なしで停止する | `TESTED`（局所境界のみ） |
 | A07 | dependency lock・package license metadataを記録。第三者コード・モデル・dataの取り込みなし | `CODE_PRESENT`（製品全体の出荷監査は未成立） |
-| U01 | 文字入力フォームとloopback JSON入口からblock理由を表示 | `CODE_PRESENT` / translation `BLOCKED_ENGINE_CAPABILITY` |
+| U01 | 文字入力、利用者操作の原文コピー／消去、loopback JSON入口からblock理由を表示 | `PARTIAL_CODE_PRESENT` / translation `BLOCKED_ENGINE_CAPABILITY` |
 | U02–U10 | 会話・音声・会議・動画・Web・文書・画像・chat adapterなし | `NOT_IMPLEMENTED` |
 | U11 | 明示opt-inのブラウザー内言語タグ保存・削除のみ。文脈引継ぎ・媒体／端末間同期なし | `PARTIAL_CODE_PRESENT` |
 | U12 | loopback text endpointのみ。利用者認証・SDK・remote jobs・cancel/deliveryなし | `PARTIAL_CODE_PRESENT` |
@@ -93,5 +93,7 @@
 - MINIDORA別成果候補観測：`0.7.0-alpha.8` commit `a55402b86090109117ffc68bfc6abe85b2c86012`のCLIを隔離buildし、日本語↔英語の2依頼を実行。buildはPASS、双方`SUSPEND`／`CAPABILITY_UNAVAILABLE`で訳文なし。候補版は選択・統合していない。詳細は`docs/ENGINE_INTEGRATION.ja.md` §8。
 - ブラウザー送信前preflight：loopback UIでblocked status時は能力GETのみでPOSTなし、入力をフォームに保持、page errorなしをPlaywright／Chromiumで確認。能力GET失敗時も原文をPOSTせずエラー表示。合成preflightで`TRANSLATION_ACCEPTED`を返した制御試験ではPOST経路に進むが、応答はmock blockedであり、実翻訳の証拠ではない。
 - U11のブラウザー保存：初期offでは原言語ヒント・訳先言語タグを再読込後も保存しない。明示opt-in後はversion、原言語ヒント、訳先言語タグのみをlocalStorageへ保存し、固有の原文を含めないこと、再読込で設定を復元すること、削除操作でキーを消し再読込後は初期値へ戻ることをPlaywright／Chromiumで確認 — PASS。訳文は未生成であり、文脈・人物・用語の保持、他媒体／端末との同期は未実装。
+- U01の原文操作：Playwright／Chromiumで利用者クリック後に限りクリップボードへコピーされること、クリップボードを読み取らないこと、消去操作で画面の原文とbyte counterを初期化すること、コピー・消去ボタンが空入力時に無効であることを確認 — PASS。自動送信・自動保存は行わない。
+- U01の送信相関：合成preflightに`TRANSLATION_ACCEPTED`を返す制御試験で、同じページ内の複数送信が同一session IDを使い、原文・原言語ヒント・訳先の編集に応じてinput versionが増えることを確認 — PASS。API応答はmock blockedで、実訳の証拠ではない。再読込でsession ID／版は初期化される。
 - `BLOCKED`: 選択MINIDORA版での成功翻訳受入。`NOT RUN`: Konjacからのengine統合、原文・訳文・セッション文脈等の保持／消去、Windows／macOS／Android／iOS/Web配布、実機権限、remote effects、全Uxx品質受入、性能測定、独立QA。
 

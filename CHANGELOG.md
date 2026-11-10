@@ -8,6 +8,8 @@
 - Added an explicit `BLOCKED_ENGINE_CAPABILITY` response. The selected MINIDORA release is not wired, and the audited successor candidate does not establish accepted unrestricted translation. Requests return no translation variant and are not persisted or sent to a remote service.
 - Updated the browser UI to refresh the capability status before submission and keep the source text in the browser until U01 explicitly reports `TRANSLATION_ACCEPTED`; failed status checks also send no source text.
 - Added optional, deletable browser-local language preferences for U11. Only the source-language hint and target-language tags are stored; source and translated text remain excluded. Cross-media context and device sync are not implemented.
+- Added explicit source-text copy and clear controls. Clipboard writes occur only after a button click; the page never reads clipboard contents.
+- Added an in-memory page session ID and incrementing input version for text, language-hint and target edits. These values reset when the page is reopened and are sent only through the accepted translation path.
 - Refreshed the engine evidence reference to the latest audited Rust alpha 8 source commit without changing the selected frozen Python Beta version.
 - Kept the U01–U12 product scope visible. Only text entry and the local request/status route are present; other media adapters, authenticated SDK/API, history, platform clients, translation acceptance, and release remain open.
 - Recorded locked Serde dependencies and their package license metadata in `NOTICE`.

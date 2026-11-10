@@ -102,6 +102,9 @@ textarea { display: block; min-height: 180px; padding: 13px 14px; line-height: 1
 textarea::placeholder, input::placeholder { color: #929ba3; }
 .language-input { max-width: 240px; }
 .field-foot { display: flex; justify-content: space-between; gap: 12px; margin: 6px 1px 0; color: var(--muted); font-size: .74rem; }
+.source-actions { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.source-action-status { flex: 1; min-width: 150px; margin: 0; color: var(--muted); font-size: .76rem; }
+.source-actions .button { min-height: 35px; padding: 6px 10px; font-size: .78rem; }
 .target-fieldset { min-width: 0; margin: 18px 0 0; padding: 0; border: 0; }
 .target-fieldset legend { padding: 0; }
 .target-list { display: flex; flex-wrap: wrap; gap: 7px; min-height: 4px; }
