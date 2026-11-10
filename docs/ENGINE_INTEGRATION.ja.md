@@ -96,3 +96,13 @@ DeliveryPort: EngineExecution + TranslationVariant[] -> authorized DeliveryArtif
 - APIの呼出しはloopback内に限るが、本番の利用者認証やU12の認証ジョブ契約は未実装。UI表示と送信・ファイル保存の区別、永続history、cancel/reconcileも未実装である。
 - 環境、version、OS別の実訳・返答・配送・結果保存は未試験。ローカルで返るblocked JSONを`WIRED`または実訳として扱わない。
 
+## 7. 2026-11-10 選択版MINIDORA公開入口の隔離実行
+
+Konjac本体の変更ではなく、選択版の公開実行入口が翻訳を成立させるかをLinux／Python 3.12の一時venvで確認した。対象ソースsnapshotは`gatchimuchio/MINIDORA-BETA` commit `d907eaaa101ad04a29f83584b1ff39995fbb7d71`（`0.6.0b1`）、依存は`SudachiPy==0.6.11`と`SudachiDict-core==20260723`。ソースから作ったwheelのSHA-256は`600a58a7357a4d5bd21d73b9cc3464ab1fb86495b0f01a61f2b866ae09945b33`。このwheelは原配布wheelではない。`REPOSITORY_LOCK.md`が示すとおり原配布wheelはGitHub checkoutに含まれず、文書ローカライズを含むsource buildを原バイナリと同一視しない。
+
+- 公開`ミニドラβ実行機.実行`へ明示完了条件なしで依頼すると、完了条件不足の`ValueError`で停止した。
+- `要求状態=("翻訳完了",)`を指定し、日本語→英語（「今日は良い天気です。」）、英語→日本語（“The train leaves at noon.”）、フランス語→日本語（“Où est la gare ?”）を各新規executorで実行。全件`SUSPEND`、`HDS_NO_PRODUCTIVE_ACTION`／`作用不足`となり、出力は診断のみで訳文は採用されなかった。
+- 実行は完了したが、翻訳受入は成立していない。制御サンプルの`HDS関数作用`注入も行っていない。これは能力の不存在証明ではなく、この版・公開経路・試験条件での失敗観測である。
+
+従ってKonjacの実engine接続は引き続き`NOT_WIRED`、U01は`BLOCKED_ENGINE_CAPABILITY`とする。選択版に翻訳を成立させる公開・受入済み作用／能力が用意されるまで、Konjac側で別の意味エンジンや成功扱いの変換を追加しない。
+

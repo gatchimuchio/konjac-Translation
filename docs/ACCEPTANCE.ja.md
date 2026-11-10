@@ -80,7 +80,7 @@
 
 ### この施工の検証証跡
 
-- 対象：`konjac-Translation`、Rust `0.1.0`、Linux x86_64、Rust/Cargo `1.99.1`、locked dependency set。MINIDORAは呼び出していない。
+- 対象：`konjac-Translation`、Rust `0.1.0`、Linux x86_64、Rust/Cargo `1.99.1`、locked dependency set。Konjac本体の検査ではMINIDORAを呼んでいない。別実行の隔離公開API観測は後述。
 - `cargo fmt --all -- --check` — PASS。
 - `cargo check --workspace --all-targets --locked` — PASS。
 - `cargo clippy --workspace --all-targets --locked -- -D warnings` — PASS。
@@ -89,5 +89,6 @@
 - `node --check web/app.js` — PASS。Playwright／Chromium (`/usr/bin/chromium`)でローカル画面を開き、U01〜U12の12行、`en`/`fr`の二訳先、BLOCKED表示、訳文なし、browser page errorなしを確認 — PASS。
 - 追加loopback HTTP観測：未対応画像入力=`UNSUPPORTED_ADAPTER`かつengine未呼出、cross-origin=`403`、誤Content-Type=`415`、重複訳先=`422` — PASS。
 - 最初のPlaywright assertionはバナーと結果欄の同じstatus textをstrict selectorで同時取得し、確認不能となった。結果欄の固有IDへselectorを限定して同じbuildで再実行しPASS。製品コードの変更は不要だった。
-- `NOT RUN`: MINIDORA実訳・MINIDORA連携、データ永続化／消去、Windows／macOS／Android／iOS/Web配布、実機権限、remote effects、全Uxx品質受入、性能測定、独立QA。
+- MINIDORA隔離公開API観測：`0.6.0b1`ソースbuildを一時venvに導入し、明示完了条件ありの3言語方向を実行。全件`SUSPEND`／`HDS_NO_PRODUCTIVE_ACTION`で、訳文採用なし。詳細とsource SHAは`docs/ENGINE_INTEGRATION.ja.md` §7を参照。
+- `BLOCKED`: 選択MINIDORA版での成功翻訳受入。`NOT RUN`: Konjacからのengine統合、データ永続化／消去、Windows／macOS／Android／iOS/Web配布、実機権限、remote effects、全Uxx品質受入、性能測定、独立QA。
 
