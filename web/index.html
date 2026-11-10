@@ -28,7 +28,7 @@
         <span class="notice-icon" aria-hidden="true">!</span>
         <div>
           <h2 id="engine-notice-title">翻訳能力の接続・受入が未成立のため、翻訳を実行できません</h2>
-          <p>選択されたMINIDORA-BETAの公開契約と受入記録から、一般の言語翻訳が成立した証拠を確認できていません。この画面はMINIDORAを呼び出さず、訳文を作らず、入力を保存・外部送信しません。</p>
+          <p>選択されたMINIDORA-BETAの公開契約と受入記録から、一般の言語翻訳が成立した証拠を確認できていません。この画面はMINIDORAを呼び出さず、訳文を作りません。翻訳能力が受入済みでない間は、原文をブラウザー内に残し、ローカルサービスへも送信しません。</p>
         </div>
         <span class="engine-version">選択版 0.6.0b1 · 未接続</span>
       </section>
@@ -63,7 +63,7 @@
           <button id="submit-translation" class="button button-primary" type="submit">
             <span>翻訳の可否を確認</span><span aria-hidden="true">→</span>
           </button>
-          <p class="form-note">実行しても、エンジン未対応のため訳文は生成されません。</p>
+          <p class="form-note">能力確認に原文は不要です。未対応の場合、入力はブラウザー内に残り、送信されません。</p>
         </form>
 
         <section class="result-card" aria-labelledby="result-title">

@@ -15,7 +15,7 @@ Run the local text interface with Rust 1.99.1:
 cargo run --locked -- serve
 ```
 
-Open `http://127.0.0.1:8787/`. The server binds only to loopback. Its `POST /api/v1/translate` contract preserves source/target language tags and returns a typed `BLOCKED_ENGINE_CAPABILITY` status with no translation variant while the MINIDORA route remains unverified. Requests are handled in memory for one response; raw input is not logged or persisted. See [the current engine evidence](docs/ENGINE_INTEGRATION.ja.md).
+Open `http://127.0.0.1:8787/`. The server binds only to loopback. Its `POST /api/v1/translate` contract preserves source/target language tags and returns a typed `BLOCKED_ENGINE_CAPABILITY` status with no translation variant while the MINIDORA route remains unverified. The browser UI refreshes `/api/v1/capabilities` before submission and keeps source text in the browser unless U01 explicitly reports `TRANSLATION_ACCEPTED`. Direct API requests are handled in memory for one response; raw input is not logged or persisted. See [the current engine evidence](docs/ENGINE_INTEGRATION.ja.md).
 
 ## One translation experience, many sources and destinations
 

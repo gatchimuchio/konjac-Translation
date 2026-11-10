@@ -92,8 +92,9 @@ DeliveryPort: EngineExecution + TranslationVariant[] -> authorized DeliveryArtif
 - `cargo run --locked -- serve` はloopback IPだけにbindし、UIとJSON入口を同一originで提供する。遠隔利用・認証付きSDK・本番APIではない。
 - `TranslationSubmission`は`contract_version`, `session_id`, `input_version`, `source_kind`, `source_text`, `source_language_hint`, `target_languages`を持つ。対象言語は1〜16件、原文は128 KiBまで。契約versionと入力版を検証する。
 - `text`以外のsource kindは取得せず、`UNSUPPORTED_ADAPTER`／`NOT_CALLED`を返す。音声・カメラ・画面・ファイルの権限も要求しない。
-- `text`はフォームからローカルmemory上の1要求として受理する。選択版に紐づいた実engine executorがないため意味処理は行わない。`BLOCKED_ENGINE_CAPABILITY`とengine証拠参照、訳先別状態のみを返し、`TranslationVariant`を作らない。
-- APIの呼出しはloopback内に限るが、本番の利用者認証やU12の認証ジョブ契約は未実装。UI表示と送信・ファイル保存の区別、永続history、cancel/reconcileも未実装である。
+- ブラウザーUIは画面初期化時と送信直前に`GET /api/v1/capabilities`を行う。U01の`current_status`が厳密に`TRANSLATION_ACCEPTED`の場合のみ原文を含む`POST /api/v1/translate`へ進む。現在は`BLOCKED_ENGINE_CAPABILITY`なので原文をブラウザー内に保持し、ローカルserviceにも送らず、能力状態だけで停止表示する。能力確認に失敗した場合も原文を送らない。
+- 直接API利用者が`POST /api/v1/translate`を呼んだ場合、text bodyはloopback request中だけmemory上で扱う。選択版の実engine executorがないため意味処理せず、`BLOCKED_ENGINE_CAPABILITY`、engine証拠参照、訳先別状態を返し、`TranslationVariant`を作らない。
+- APIの呼出しはloopback内に限るが、本番の利用者認証やU12の認証ジョブ契約は未実装。UIからの外部送信・ファイル保存、永続history、cancel/reconcileも未実装である。
 - 環境、version、OS別の実訳・返答・配送・結果保存は未試験。ローカルで返るblocked JSONを`WIRED`または実訳として扱わない。
 
 ## 7. 2026-11-10 選択版MINIDORA公開入口の隔離実行

@@ -1,6 +1,7 @@
 "use strict";
 
 const CONTRACT_VERSION = "konjac.translation.v1";
+const ACCEPTED_TRANSLATION_STATUS = "TRANSLATION_ACCEPTED";
 const MAX_TARGETS = 16;
 const targetLanguages = new Set(["en"]);
 const form = document.querySelector("#translation-form");
@@ -124,6 +125,13 @@ function showResponse(response) {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const sourceHint = sourceLanguage.value.trim();
+  if (sourceHint && !validTag(sourceHint)) {
+    sourceLanguage.setCustomValidity("言語タグを確認してください。例: ja, en, zh-Hant");
+    sourceLanguage.reportValidity();
+    return;
+  }
+  sourceLanguage.setCustomValidity("");
   if (!form.reportValidity()) return;
   const targets = [...targetLanguages];
   if (targets.length === 0) {
@@ -137,6 +145,26 @@ form.addEventListener("submit", async (event) => {
   resultStatus.className = "pill pill-muted";
   resultStatus.textContent = "処理中";
   try {
+    // Source text stays in the browser unless the local API explicitly accepts translation.
+    const modes = await loadModes();
+    if (!modes) {
+      setResultError("対応状況を取得できなかったため、原文は送信していません。接続を確認してください。");
+      return;
+    }
+    const textMode = modes.find((mode) => mode.requirement_id === "U01");
+    if (textMode?.current_status !== ACCEPTED_TRANSLATION_STATUS) {
+      const reportedStatus = textMode?.current_status || "NOT_REPORTED";
+      showResponse({
+        status: "BLOCKED_ENGINE_CAPABILITY",
+        reason: `翻訳能力は受入済みではありません（${reportedStatus}）。原文はこのブラウザー内に残り、ローカルサービスへ送信していません。`,
+        target_results: targets.map((target_language) => ({
+          target_language,
+          status: "BLOCKED_ENGINE_CAPABILITY",
+        })),
+        variants: [],
+      });
+      return;
+    }
     const response = await fetch("/api/v1/translate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -147,7 +175,7 @@ form.addEventListener("submit", async (event) => {
         input_version: 1,
         source_kind: "text",
         source_text: sourceText.value,
-        source_language_hint: sourceLanguage.value.trim() || null,
+        source_language_hint: sourceHint || null,
         target_languages: targets,
       }),
     });
@@ -190,9 +218,13 @@ async function loadModes() {
   try {
     const response = await fetch("/api/v1/capabilities", { cache: "no-store" });
     if (!response.ok) throw new Error("HTTP error");
-    renderModes(await response.json());
+    const modes = await response.json();
+    if (!Array.isArray(modes)) throw new Error("Invalid capability response");
+    renderModes(modes);
+    return modes;
   } catch {
     document.querySelector("#mode-list").textContent = "対応状況を取得できませんでした。";
+    return null;
   }
 }
 

@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 
 pub const CONTRACT_VERSION: &str = "konjac.translation.v1";
 pub const SELECTED_ENGINE_VERSION: &str = "0.6.0b1";
-pub const AUDITED_RUST_CANDIDATE_VERSION: &str = "0.7.0-alpha.7";
-pub const AUDITED_RUST_CANDIDATE_COMMIT: &str = "d907eaaa101ad04a29f83584b1ff39995fbb7d71";
+pub const AUDITED_RUST_CANDIDATE_VERSION: &str = "0.7.0-alpha.8";
+pub const AUDITED_RUST_CANDIDATE_COMMIT: &str = "a55402b86090109117ffc68bfc6abe85b2c86012";
 pub const MAX_SOURCE_BYTES: usize = 128 * 1024;
 pub const MAX_TARGET_LANGUAGES: usize = 16;
 const ENGINE_BLOCK_REASON: &str = "A supported MINIDORA translation capability has not been verified and connected. The engine was not called and no translation was generated.";
@@ -104,6 +104,7 @@ pub struct ModeCapability {
     pub experience: &'static str,
     pub input_adapter: &'static str,
     pub engine: &'static str,
+    /// The browser sends source text only when U01 reports `TRANSLATION_ACCEPTED`.
     pub current_status: &'static str,
 }
 
@@ -420,6 +421,12 @@ mod tests {
         assert!(result.variants.is_empty());
         assert_eq!(result.delivery_status, "NOT_REQUESTED");
         assert_eq!(result.retention, "EPHEMERAL_REQUEST_ONLY");
+        assert_eq!(result.engine.selected_release, "0.6.0b1");
+        assert_eq!(result.engine.audited_rust_candidate, "0.7.0-alpha.8");
+        assert_eq!(
+            result.engine.candidate_source_commit,
+            "a55402b86090109117ffc68bfc6abe85b2c86012"
+        );
     }
 
     #[test]

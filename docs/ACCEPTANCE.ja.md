@@ -91,5 +91,6 @@
 - 最初のPlaywright assertionはバナーと結果欄の同じstatus textをstrict selectorで同時取得し、確認不能となった。結果欄の固有IDへselectorを限定して同じbuildで再実行しPASS。製品コードの変更は不要だった。
 - MINIDORA隔離公開API観測：`0.6.0b1`ソースbuildを一時venvに導入し、明示完了条件ありの3言語方向を実行。全件`SUSPEND`／`HDS_NO_PRODUCTIVE_ACTION`で、訳文採用なし。詳細とsource SHAは`docs/ENGINE_INTEGRATION.ja.md` §7を参照。
 - MINIDORA別成果候補観測：`0.7.0-alpha.8` commit `a55402b86090109117ffc68bfc6abe85b2c86012`のCLIを隔離buildし、日本語↔英語の2依頼を実行。buildはPASS、双方`SUSPEND`／`CAPABILITY_UNAVAILABLE`で訳文なし。候補版は選択・統合していない。詳細は`docs/ENGINE_INTEGRATION.ja.md` §8。
+- ブラウザー送信前preflight：loopback UIでblocked status時は能力GETのみでPOSTなし、入力をフォームに保持、page errorなしをPlaywright／Chromiumで確認。能力GET失敗時も原文をPOSTせずエラー表示。合成preflightで`TRANSLATION_ACCEPTED`を返した制御試験ではPOST経路に進むが、応答はmock blockedであり、実翻訳の証拠ではない。
 - `BLOCKED`: 選択MINIDORA版での成功翻訳受入。`NOT RUN`: Konjacからのengine統合、データ永続化／消去、Windows／macOS／Android／iOS/Web配布、実機権限、remote effects、全Uxx品質受入、性能測定、独立QA。
 
